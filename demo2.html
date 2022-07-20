@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet and D3 Map</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://d19vzq90twjlae.cloudfront.net/leaflet-0.7/leaflet.css" />
+    <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+    <div class="header">
+        <h1>WeKG-MF Knowledge Graph Exploration and Navigation</h1>
+    </div>
+
+
+    <div id="map" style="width: 600px; height: 400px"></div>
+    <div style="width: 600px; height: 400px">
+    <canvas id="line-chart" width="300" height="200"></canvas>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+    <script type="text/javascript" src="https://dgraux.github.io/LOV-ES/js/jquery-1.7.2.min.js"></script>
+    <script src="https://d19vzq90twjlae.cloudfront.net/leaflet-0.7/leaflet.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+
+  
+<script type="text/javascript">
+SPARQL = function(o) {
+  this.query = function(q) {
+    return $.ajax({
+      url: o.endpoint,
+      accepts: {json: "application/sparql-results+json"},
+      data: {query: q, apikey: o.apikey},
+      dataType: "json"
+    });
+  };
+};
+</script>
+
+<script>
+
+var myChart
+const ctx = document.getElementById('line-chart').getContext('2d');
+
+var endpoint = new SPARQL({ 
+    apikey: "YOUR-API-KEY-HERE", 
+    endpoint: "http://weakg.i3s.unice.fr/sparql"
+});
+        
+        let div = d3.select("body").append("div")
+                 .attr("class", "map-tooltip")
+        
+        var map = L.map('map').setView([47,2], 5);
+        mapLink = 
+            '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+        L.tileLayer(
+            'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; ' + mapLink + ' Contributors',
+            maxZoom: 18,
+            }).addTo(map);
+
+		// Add an SVG element to Leaflet’s overlay pane
+		var svg = d3.select(map.getPanes().overlayPane).append("svg"),
+			g = svg.append("g").attr("class", "leaflet-zoom-hide");
+			
+		d3.json("./data/regions.json", function(geoShape) {
+            
+		//  create a d3.geo.path to convert GeoJSON to SVG
+		var transform = d3.geo.transform({point: projectPoint}),
+            	path = d3.geo.path().projection(transform);
+ 
+		// create path elements for each of the features
+		d3_features = g.selectAll("path")
+			.data(geoShape.features)
+			.enter().append("path")
+            .on("mouseover", function(event, d) {
+                div.transition();
+                div.html( "Région : " + geoShape.features[d].properties.nom )
+                .style("left", (event.pageX + 30) + "px")
+                .style("top", (event.pageY - 30) + "px");
+            })
+            .on("click", function(event, d) {
+                
+
+                //display stations for some region on the map
+                endpoint.query(buildQuery_stations(geoShape.features[d].properties.code)).done(onSuccessMember1);
+
+                //display air Temperatures Times Series on the map
+                endpoint.query(buildQuery_slices(geoShape.features[d].properties.code)).done(onSuccessMember2);
+                
+            })
+
+            function onSuccessMember1(json) {
+             for (var b in json.results.bindings) {
+	            var station = json.results.bindings[b][json.head.vars[0]];
+                //console.log(station['value'])
+	            var stationName = json.results.bindings[b][json.head.vars[1]];
+	            var lat = json.results.bindings[b][json.head.vars[3]];
+	            var long = json.results.bindings[b][json.head.vars[4]];
+                L.marker([lat['value'], long['value']]).addTo(map)
+                .bindPopup(stationName['value'] )
+                .openPopup();
+              }
+            }
+            
+            function onSuccessMember2(json) {
+                let array_month = [];
+                let array_tempAVG = [];
+                let array_tempMIN = [];
+                let array_tempMAX = [];
+                for (var b in json.results.bindings) {
+                    array_month.push(json.results.bindings[b][json.head.vars[0]]['value']);
+                    //console.log(station['value'])
+                    array_tempAVG.push(json.results.bindings[b][json.head.vars[1]]['value']);
+                    array_tempMIN.push(json.results.bindings[b][json.head.vars[2]]['value']);
+                    array_tempMAX.push(json.results.bindings[b][json.head.vars[3]]['value']);
+                }
+                //return {
+                  //      data_tempAVG: array_tempAVG,
+                    //    data_tempMIN: array_tempMIN,
+                      //  data_tempMIN: array_tempMIN,
+                    //};
+                console.log(array_tempMAX)
+
+                myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                labels: array_month,
+                datasets: [{
+                    label: "Monthly Average Air Temperatures",
+                    borderColor: "#3e95cd",
+                    data: array_tempAVG
+                },
+                {
+                    label: "Monthly Minimum Air Temperatures",
+                    borderColor: "#8e5ea2",
+                    data: array_tempMIN
+                },
+                {
+                    label: "Monthly Maximum Air Temperatures",
+                    borderColor: "#3cba9f",
+                    data: array_tempMAX
+                }]
+                },
+                options: {
+                title: {
+                    display: true,
+                    text: 'Times Series of Air Temperatures'
+                    },
+                animation: {
+                        duration: 5000,
+                    },
+                }
+              });
+              
+            }
+    
+            
+
+		map.on("viewreset", reset);
+
+		reset();
+
+
+
+		// fit the SVG element to leaflet's map layer
+		function reset() {
+        
+			bounds = path.bounds(geoShape);
+
+			var topLeft = bounds[0],
+				bottomRight = bounds[1];
+
+			svg .attr("width", bottomRight[0] - topLeft[0])
+				.attr("height", bottomRight[1] - topLeft[1])
+				.style("left", topLeft[0] + "px")
+				.style("top", topLeft[1] + "px");
+
+			g .attr("transform", "translate(" + -topLeft[0] + "," 
+			                                  + -topLeft[1] + ")");
+
+			// initialize the path data	
+			d3_features.attr("d", path)
+				.style("fill-opacity", 0.2);
+				//.attr('fill','blue');
+		} 
+
+		// Use Leaflet to implement a D3 geometric transformation.
+		function projectPoint(x, y) {
+			var point = map.latLngToLayerPoint(new L.LatLng(y, x));
+			this.stream.point(point.x, point.y);
+		}
+
+	})
+
+    function buildQuery_stations(insee) {
+        var queryStations = `PREFIX dct: <http://purl.org/dc/terms/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        PREFIX geosparql:  <http://www.opengis.net/ont/geosparql#> 
+        SELECT distinct * WHERE
+        {
+        ?station rdfs:label ?stationName; dct:spatial [ wdt:P131 [rdfs:label ?label ; wdt:P2585 '`+ insee +`']];  geo:lat ?lat; geo:long ?long .
+        }
+        `
+        return queryStations
+
+    }
+        
+    function buildQuery_slices(insee) {
+        var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
+                    PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+                    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+                    PREFIX qb:  <http://purl.org/linked-data/cube#>
+                    PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
+                    PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
+                    PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
+                    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                    PREFIX dct: <http://purl.org/dc/terms/>
+                    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+
+                    SELECT ?month (AVG(?temp_avg) as ?avg_temp)  (AVG(?temp_min) as ?min_temp) (AVG(?temp_max) as ?max_temp) WHERE
+                    {
+                    ?s  a qb:Slice ;
+                    wes-dimension:station ?station ;
+                    wes-dimension:year "2021"^^xsd:gYear ;
+                    qb:observation [
+                        a qb:Observation ;
+                        wes-attribute:observationDate ?date ;
+                        wes-measure:avgDailyTemperature ?temp_avg; 
+                        wes-measure:minDailyTemperature ?temp_min; 
+                        wes-measure:maxDailyTemperature ?temp_max] .
+                    
+                    ?station a weo:WeatherStation .
+                    ?x dct:spatial ?e.                                
+                    ?e wdt:P131 ?item .
+                    ?item rdfs:label ?label ; wdt:P2585  '`+ insee +`' .
+                    BIND(MONTH(?date) as ?month)
+                    }
+                    GROUP BY ?month 
+                    ORDER BY ?month
+        `
+        return query
+
+    }
+
+    
+    </script>
+</body>
+</html>

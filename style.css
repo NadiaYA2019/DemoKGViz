@@ -1,0 +1,39 @@
+#svg {
+    display: block;
+    width:250px;
+}
+
+.map-tooltip {
+    position: absolute;
+    text-align: center;
+    z-index: 1000;
+    color: black;
+    width: 275px;
+    height: 37px;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: pink;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+}
+#map { height: 180px; }
+
+path {
+    fill: #000;
+    fill-opacity: .2;
+    stroke: #fff;
+    stroke-width: 1.5px;
+  }
+  
+  path:hover {
+    fill: brown;
+    fill-opacity: .7;
+  }
+
+.header {
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    color: blueviolet;
+}
