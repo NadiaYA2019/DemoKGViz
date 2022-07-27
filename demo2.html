@@ -10,29 +10,30 @@
     <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-    
+   
     <div class="header">
         <h1>WeKG-MF Knowledge Graph Exploration and Navigation</h1>
     </div>
     
-    <div class="dataviz-1">
-        <div id="map" style="width: 600px; height: 400px"></div>
-        <div id="station">
-            <table id="objecttable" class="table table-striped table-bordered"></table>
+    <div class="dataviz">
+        <div class="dataviz-1">
+            <div id="map" ></div>
+            <div class="line-chart-div">
+                <svg id="brush-chart" width="600" height="100"></svg>
+            </div>
         </div>
-        
-    </div>
+
+        <div class="dataviz-2">
     
-    
-    <div class="dataviz-2">
-        
-        <div class="line-chart-div">
-            <svg id="chart-legend-hour" width="600" height="80"></svg>
-            <svg id="line-chart-hour" width="600" height="300"></svg>
-        </div>
-        <div class="line-chart-div2">
-            <svg id="chart-legend-hour2" width="600" height="80"></svg>
-            <svg id="line-chart-hour2" width="600" height="300"></svg>
+            <div class="line-chart-div1" >
+                <svg id="chart-legend-hour1" width="600" height="80"></svg>
+                <svg id="line-chart-hour1" width="600" height="300"></svg>
+            </div>
+            
+            <div class="line-chart-div2">
+                <svg id="chart-legend-hour2" width="600" height="40"></svg>
+                <svg id="line-chart-hour2" width="600" height="300"></svg>
+            </div>
         </div>
     </div>
     
@@ -67,7 +68,7 @@
             endpoint: "http://weakg.i3s.unice.fr/sparql"
         });
         
-        let div = d3.select("body").append("div")
+        //let div = d3.select(".map")
         
         var map = L.map('map').setView([47,2], 5);
         mapLink = 
@@ -249,7 +250,7 @@
                 let margin = {left: 70, right: 20, bottom: 20, top: 80}
                 let width = 600, height = 300
                 
-                var svgChart = d3.select("svg#line-chart-hour")
+                var svgChart = d3.select("svg#line-chart-hour1")
                 console.log(svgChart)
                 
                 svgChart.selectAll('g').remove()
@@ -272,8 +273,9 @@
                     
                 }
                 
-                console.log("datastation", newdata[0].region)
-                
+                console.log("Region", newdata[0].region)
+
+
                 var sumstat = d3.nest()
                 .key(d => d.station)
                 .entries(newdata);
@@ -297,16 +299,13 @@
                 
                 var y = d3.scaleLinear()
                 .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp_avg) }))
-                .range([ height, 0 ]);
+                .range([height, 0 ]);
                 
                 yAxis = d3.axisLeft()
                 .scale(y)
                 
                 
                 var year = new Date(newdata[0].date).getYear();
-                
-                console.log("Year", year )
-                
                 
                 svgChart.append("g")
                     .attr("transform", `translate(${margin.left}, 0)`)
@@ -361,6 +360,7 @@
                     tooltip.html("<b> Station: </b>"+ station + "</br>" + "<b>  Date:</b> " + xDate.toISOString().split('T')[0] +  "</br>" + "<b> Daily Avg. Temp.:</b> " + yTemp);
                     
                     
+
                     function doesChartExist() {
                         return new Promise( (fulfill, reject) => {
                             // comparer donnée survol et donnée ligne
@@ -397,7 +397,7 @@
                 var bisectDate = d3.bisector(d => d.date).left;
                 
                 // add SVG legend             
-                var svglegend = d3.select("svg#chart-legend-hour");
+                var svglegend = d3.select("svg#chart-legend-hour1");
                 
                 let legendGroup = svglegend.selectAll('g').remove()
                     .data(StationName)
@@ -433,7 +433,7 @@
             
             function onSuccessMember3HourlyTemp (json, station)
             {
-                // console.log(json)
+              console.log("3Hourly Temperature", json)
                 
                 let margin = {left: 70, right: 20, bottom: 20, top: 80}
                 let width = 600, height = 300
@@ -463,31 +463,27 @@
                     
                 }
                 
-                // console.log(newdata)
-                /* var sumstat = d3.nest()
-                .key(d => d.date)
-                .entries(newdata);
-                
-                console.log("sumstat", sumstat)*/
                 
                 var x = d3.scaleTime()
                     .domain(d3.extent(newdata, d => new Date(d.date)))
-                    .range([ margin.left, width ])
+                    .range([ 0, width ])
                 
+
+                xAxis = d3.axisBottom()
+                        .scale(x)
                 
                 svgChart.append("g")
-                    .attr("transform", `translate(0, ${height})`)
-                    .call(d3.axisBottom(x).ticks(8));
-                
+                    .attr("transform", `translate(${margin.left}, ${height})`)
+                    .call(xAxis);
                 
                 // Add Y axis
                 
                 var y = d3.scaleLinear()
                     .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp) }))
-                    .range([ height,0 ]);
+                    .range([height,0 ]);
                 
                 yAxis = d3.axisLeft()
-                    .scale(y)
+                        .scale(y)
                 
                 svgChart.append("g")
                     .attr("transform", `translate(${margin.left}, 0)`)
@@ -878,11 +874,11 @@
                 sosa:resultTime ?t . 
                 ?s rdfs:label ?station .
                 
-                FILTER(xsd:date(?t) = xsd:date(?date))
-                #FILTER(xsd:date(?t) >= xsd:date(?jourPrecedent))
-                #BIND ( bif:dateadd('day', -1, xsd:date(?date)) as ?jourPrecedent)
-                #BIND ( bif:dateadd('day', 1, xsd:date(?date)) as ?jourSuivant)
-                #FILTER(xsd:date(?t)<= ?jourSuivant)
+                #FILTER(xsd:date(?t) <= xsd:date(?date))
+                FILTER(xsd:date(?t) >= xsd:date(?jourPrecedent))
+                BIND ( bif:dateadd('day', -1, xsd:date(?date)) as ?jourPrecedent)
+                BIND ( bif:dateadd('day', 1, xsd:date(?date)) as ?jourSuivant)
+                FILTER(xsd:date(?t) <= ?jourSuivant)
                 
             } 
             ORDER BY ?t
