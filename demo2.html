@@ -5,247 +5,1064 @@
     <title>Leaflet and D3 Map</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="https://d19vzq90twjlae.cloudfront.net/leaflet-0.7/leaflet.css" />
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
     <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-
+    
     <div class="header">
         <h1>WeKG-MF Knowledge Graph Exploration and Navigation</h1>
     </div>
-
-
-    <div id="map" style="width: 600px; height: 400px"></div>
-    <div style="width: 600px; height: 400px">
-    <canvas id="line-chart" width="300" height="200"></canvas>
+    
+    <div class="dataviz-1">
+        <div id="map" style="width: 600px; height: 400px"></div>
+        <div id="station">
+            <table id="objecttable" class="table table-striped table-bordered"></table>
+        </div>
+        
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
-    <script type="text/javascript" src="https://dgraux.github.io/LOV-ES/js/jquery-1.7.2.min.js"></script>
+    
+    
+    <div class="dataviz-2">
+        
+        <div class="line-chart-div">
+            <svg id="chart-legend-hour" width="600" height="80"></svg>
+            <svg id="line-chart-hour" width="600" height="300"></svg>
+        </div>
+        <div class="line-chart-div2">
+            <svg id="chart-legend-hour2" width="600" height="80"></svg>
+            <svg id="line-chart-hour2" width="600" height="300"></svg>
+        </div>
+    </div>
+    
+    <div class="chart-tooltip"> </div>
+    
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
     <script src="https://d19vzq90twjlae.cloudfront.net/leaflet-0.7/leaflet.js">
     </script>
+    <script src="https://d3js.org/colorbrewer.v1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
-
-  
-<script type="text/javascript">
-SPARQL = function(o) {
-  this.query = function(q) {
-    return $.ajax({
-      url: o.endpoint,
-      accepts: {json: "application/sparql-results+json"},
-      data: {query: q, apikey: o.apikey},
-      dataType: "json"
-    });
-  };
-};
-</script>
-
-<script>
-
-var myChart
-const ctx = document.getElementById('line-chart').getContext('2d');
-
-var endpoint = new SPARQL({ 
-    apikey: "YOUR-API-KEY-HERE", 
-    endpoint: "http://weakg.i3s.unice.fr/sparql"
-});
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    
+    
+    <script type="text/javascript">
+        SPARQL =  function(o) {
+            this.query = function(q) {
+                return $.ajax({
+                    url: o.endpoint,
+                    accepts: {json: "application/sparql-results+json"},
+                    data: {query: q, apikey: o.apikey},
+                    dataType: "json"
+                });
+            };
+        };
+    </script>
+    
+    <script>
+        
+        var endpoint = new SPARQL({ 
+            apikey: "YOUR-API-KEY-HERE", 
+            endpoint: "http://weakg.i3s.unice.fr/sparql"
+        });
         
         let div = d3.select("body").append("div")
-                 .attr("class", "map-tooltip")
         
         var map = L.map('map').setView([47,2], 5);
         mapLink = 
-            '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+        '<a href="http://openstreetmap.org">OpenStreetMap</a>';
         L.tileLayer(
-            'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; ' + mapLink + ' Contributors',
             maxZoom: 18,
-            }).addTo(map);
-
-		// Add an SVG element to Leaflet’s overlay pane
-		var svg = d3.select(map.getPanes().overlayPane).append("svg"),
-			g = svg.append("g").attr("class", "leaflet-zoom-hide");
-			
-		d3.json("./data/regions.json", function(geoShape) {
+        }).addTo(map);
+        
+        // Add an SVG element to Leaflet’s overlay pane
+        var svg = d3.select(map.getPanes().overlayPane).append("svg");
+        var g = svg.append("g").attr("class", "leaflet-zoom-hide");
+        
+        console.log("test")
+        var path;
+        Promise.all([d3.json("./data/regions.geojson")]).then(function(geoShape) {
+            console.log("here")
             
-		//  create a d3.geo.path to convert GeoJSON to SVG
-		var transform = d3.geo.transform({point: projectPoint}),
-            	path = d3.geo.path().projection(transform);
- 
-		// create path elements for each of the features
-		d3_features = g.selectAll("path")
-			.data(geoShape.features)
-			.enter().append("path")
+            var transform = d3.geoTransform({point: projectPoint}),
+            path = d3.geoPath().projection(transform);
+            
+            
+            // initialize the path data	
+            
+            
+            console.log(geoShape)
+            
+            // create path elements for each of the features
+            d3_features = g.selectAll("path")
+            .data(geoShape[0].features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .classed('map-border', true)
+            .style("fill-opacity", 0.2)
             .on("mouseover", function(event, d) {
-                div.transition();
-                div.html( "Région : " + geoShape.features[d].properties.nom )
-                .style("left", (event.pageX + 30) + "px")
-                .style("top", (event.pageY - 30) + "px");
+                // console.log(d)
+                // div.transition();
+                // div.html( "Région : " + geoShape[0].features[d].properties.nom )
+                // .style("left", (event.pageX + 30) + "px")
+                // .style("top", (event.pageY - 30) + "px");
             })
             .on("click", function(event, d) {
+                console.log('clicked!')
                 
-
                 //display stations for some region on the map
-                endpoint.query(buildQuery_stations(geoShape.features[d].properties.code)).done(onSuccessMember1);
-
+                endpoint.query(buildQuery_stations(geoShape[0].features[d].properties.code)).done(onSuccessMember1);
+                
                 //display air Temperatures Times Series on the map
-                endpoint.query(buildQuery_slices(geoShape.features[d].properties.code)).done(onSuccessMember2);
+                endpoint.query(buildQuery_slices1(geoShape[0].features[d].properties.code))
+                .done(function(json) { 
+                    console.log("new data = ", geoShape[0].features[d].properties.code, json)
+                    // onSuccessMember4(json, 'month', geoShape[0].features[d].properties.code)
+                    onSuccessMember4(json, geoShape[0].features[d].properties.code)
+                });
                 
             })
-
+            
+            d3_features.attr("d", path)
+            .style("fill-opacity", 0.2);
+            
+            /*g.append("path")
+            .attr("d", path(geoShape))
+            .attr("fill", "lightgray")*/
+            
+            
+            
             function onSuccessMember1(json) {
-             for (var b in json.results.bindings) {
-	            var station = json.results.bindings[b][json.head.vars[0]];
-                //console.log(station['value'])
-	            var stationName = json.results.bindings[b][json.head.vars[1]];
-	            var lat = json.results.bindings[b][json.head.vars[3]];
-	            var long = json.results.bindings[b][json.head.vars[4]];
-                L.marker([lat['value'], long['value']]).addTo(map)
-                .bindPopup(stationName['value'] )
-                .openPopup();
-              }
-            }
-            
-            function onSuccessMember2(json) {
-                let array_month = [];
-                let array_tempAVG = [];
-                let array_tempMIN = [];
-                let array_tempMAX = [];
+                
+                
+                $(".leaflet-marker-icon").remove();
+                $(".leaflet-popup").remove();
+                
+                var icon = new L.Icon.Default();
+                icon.options.shadowSize = [0,0];
+                
                 for (var b in json.results.bindings) {
-                    array_month.push(json.results.bindings[b][json.head.vars[0]]['value']);
+                    var station = json.results.bindings[b][json.head.vars[0]];
                     //console.log(station['value'])
-                    array_tempAVG.push(json.results.bindings[b][json.head.vars[1]]['value']);
-                    array_tempMIN.push(json.results.bindings[b][json.head.vars[2]]['value']);
-                    array_tempMAX.push(json.results.bindings[b][json.head.vars[3]]['value']);
-                }
-                //return {
-                  //      data_tempAVG: array_tempAVG,
-                    //    data_tempMIN: array_tempMIN,
-                      //  data_tempMIN: array_tempMIN,
-                    //};
-                console.log(array_tempMAX)
-
-                myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                labels: array_month,
-                datasets: [{
-                    label: "Monthly Average Air Temperatures",
-                    borderColor: "#3e95cd",
-                    data: array_tempAVG
-                },
-                {
-                    label: "Monthly Minimum Air Temperatures",
-                    borderColor: "#8e5ea2",
-                    data: array_tempMIN
-                },
-                {
-                    label: "Monthly Maximum Air Temperatures",
-                    borderColor: "#3cba9f",
-                    data: array_tempMAX
-                }]
-                },
-                options: {
-                title: {
-                    display: true,
-                    text: 'Times Series of Air Temperatures'
-                    },
-                animation: {
-                        duration: 5000,
-                    },
-                }
-              });
-              
-            }
-    
-            
-
-		map.on("viewreset", reset);
-
-		reset();
-
-
-
-		// fit the SVG element to leaflet's map layer
-		function reset() {
-        
-			bounds = path.bounds(geoShape);
-
-			var topLeft = bounds[0],
-				bottomRight = bounds[1];
-
-			svg .attr("width", bottomRight[0] - topLeft[0])
-				.attr("height", bottomRight[1] - topLeft[1])
-				.style("left", topLeft[0] + "px")
-				.style("top", topLeft[1] + "px");
-
-			g .attr("transform", "translate(" + -topLeft[0] + "," 
-			                                  + -topLeft[1] + ")");
-
-			// initialize the path data	
-			d3_features.attr("d", path)
-				.style("fill-opacity", 0.2);
-				//.attr('fill','blue');
-		} 
-
-		// Use Leaflet to implement a D3 geometric transformation.
-		function projectPoint(x, y) {
-			var point = map.latLngToLayerPoint(new L.LatLng(y, x));
-			this.stream.point(point.x, point.y);
-		}
-
-	})
-
-    function buildQuery_stations(insee) {
-        var queryStations = `PREFIX dct: <http://purl.org/dc/terms/>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-        PREFIX geosparql:  <http://www.opengis.net/ont/geosparql#> 
-        SELECT distinct * WHERE
-        {
-        ?station rdfs:label ?stationName; dct:spatial [ wdt:P131 [rdfs:label ?label ; wdt:P2585 '`+ insee +`']];  geo:lat ?lat; geo:long ?long .
-        }
-        `
-        return queryStations
-
-    }
-        
-    function buildQuery_slices(insee) {
-        var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
-                    PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-                    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-                    PREFIX qb:  <http://purl.org/linked-data/cube#>
-                    PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
-                    PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
-                    PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
-                    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                    PREFIX dct: <http://purl.org/dc/terms/>
-                    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-
-                    SELECT ?month (AVG(?temp_avg) as ?avg_temp)  (AVG(?temp_min) as ?min_temp) (AVG(?temp_max) as ?max_temp) WHERE
-                    {
-                    ?s  a qb:Slice ;
-                    wes-dimension:station ?station ;
-                    wes-dimension:year "2021"^^xsd:gYear ;
-                    qb:observation [
-                        a qb:Observation ;
-                        wes-attribute:observationDate ?date ;
-                        wes-measure:avgDailyTemperature ?temp_avg; 
-                        wes-measure:minDailyTemperature ?temp_min; 
-                        wes-measure:maxDailyTemperature ?temp_max] .
+                    var stationName = json.results.bindings[b][json.head.vars[1]];
+                    var lat = json.results.bindings[b][json.head.vars[3]];
+                    var long = json.results.bindings[b][json.head.vars[4]];
                     
-                    ?station a weo:WeatherStation .
-                    ?x dct:spatial ?e.                                
-                    ?e wdt:P131 ?item .
-                    ?item rdfs:label ?label ; wdt:P2585  '`+ insee +`' .
-                    BIND(MONTH(?date) as ?month)
+                    L.marker([lat['value'], long['value']], {icon: icon}).on('click', markerOnClick).addTo(map)
+                    .bindPopup(stationName['value'])
+                    .openPopup();
+                }
+            }
+            
+            function markerOnClick(e)
+            {
+                console.log("hi. you clicked the marker at " + e.latlng.lng + 'hhh' + e.latlng.lat );
+                endpoint.query(buildquery_closetStation(e.latlng.lng, e.latlng.lat)).done(affiche);
+                //console.log(Data_mostClosStation)
+                //let res = endpoint.query(buildquery_closetStation(e.latlng.lng, e.latlng.lat))
+                
+                //var query = buildquery_closetStation(e.latlng.lng,e.latlng.lat);
+                //console.log(query)
+            }
+            
+            function affiche(res)
+            {
+                
+                console.log(res)   
+                var data = res.results.bindings
+                let data2 = res.head.vars
+                console.log("data2", data2)
+                console.log('data', data)
+                var infoStation = []
+                
+                
+                for (var b in res.results.bindings) {
+                    
+                    for (let i = 0; i < 7; i++) 
+                    {
+                        infoStation.push({
+                            "key": res.head.vars[i], 
+                            "value": res.results.bindings[b][res.head.vars[i]].value, 
+                        })
+                        
                     }
-                    GROUP BY ?month 
-                    ORDER BY ?month
-        `
-        return query
+                    
+                }
+                
+                console.log("InfoStation", infoStation)
+                
+                
+                // = Object.keys(infoStation).map(function(k) { return {key:k, value:infoStation[k]} })
+                //console.log("info Stations", data)
+                columns = ['key', 'value']
+                var table = d3.select("body").select(".dataviz-1").select("#station").select("#objecttable").html("")
+                var tbody = table.append("tbody");
+                
+                var rows = tbody.selectAll("tr")
+                .data(infoStation)
+                .enter()
+                .append("tr");
+                
+                var cells = rows.selectAll('td')
+                .data(function (row) {
+                    return columns.map(function (column) {
+                        return {column: column, value: row[column]};
+                    });
+                })
+                .enter()
+                .append('td')
+                .html(function (d) { 
+                    if (d.value.startsWith("http"))
+                    {
+                        return "<a href="+ d.value +">" + d.value + "</a>"
+                    }
+                    else
+                    {return d.value;}
+                })
+                .style("border-bottom", "1px black solid")
+                .style("padding", "15px");
+                
+                
+                let uri_station = res.results.bindings[0][res.head.vars[0]]['value'];
+                
+                endpoint.query(Query_slices_byStation(uri_station)).done(function(json) { 
+                    console.log("new data = ", uri_station, json)
+                    
+                    
+                });
+                
+            }
+            
+            /*
+            json: the raw data from the query
+            suffix: whether the chart will show data per month, day, or hour
+            value: the value that launched the query 
+            insee (optional): the code INSEE of the region to which the data belongs
+            */
+            function onSuccessMember4(json) {
+                
+                console.log(json)
+                let margin = {left: 70, right: 20, bottom: 20, top: 80}
+                let width = 600, height = 300
+                
+                var svgChart = d3.select("svg#line-chart-hour")
+                console.log(svgChart)
+                
+                svgChart.selectAll('g').remove()
+                
+                svgChart.attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.bottom + margin.top)
+                .append("g")
+                
+                let newdata = []
+                let data = json.results.bindings
+                
+                
+                for (let i = 0; i < data.length; i++) {
+                    newdata.push({
+                        date: data[i]['date'].value,
+                        station: data[i]['Nstation'].value,
+                        temp_avg: data[i]['temp_avg'].value,
+                        region: data[i]['label'].value
+                    })
+                    
+                }
+                
+                console.log("datastation", newdata[0].region)
+                
+                var sumstat = d3.nest()
+                .key(d => d.station)
+                .entries(newdata);
+                
+                
+                var StationName = sumstat.map(function(d) {return d.key}) 
+                console.log(StationName)
+                //console.log("time = ", d3.extent(newdata, d => new Date(d.date)))
+                var x = d3.scaleTime()
+                .domain(d3.extent(newdata, d => new Date(d.date)))
+                
+                x.range([ 0, width ])
+                
+                
+                svgChart.append("g")
+                .attr("transform", `translate(${margin.left}, ${height})`)
+                .call(d3.axisBottom(x).ticks(20));
+                
+                
+                // Add Y axis
+                
+                var y = d3.scaleLinear()
+                .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp_avg) }))
+                .range([ height, 0 ]);
+                
+                yAxis = d3.axisLeft()
+                .scale(y)
+                
+                
+                var year = new Date(newdata[0].date).getYear();
+                
+                console.log("Year", year )
+                
+                
+                svgChart.append("g")
+                    .attr("transform", `translate(${margin.left}, 0)`)
+                    .call(yAxis)
+                
+                svgChart.append("text")
+                    .attr("transform", "translate(30,200)rotate(-90)")
+                    .text("Temperature");
+                
+                var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6]) 
+                
+                let lineGroup = svgChart.selectAll('g.lineGroup') 
+                .data(sumstat)
+                .enter()
+                .append('g')
+                .attr('class', 'lineGroup')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                
+                
+                lineGroup.append("path")
+                .attr("fill", "none") //.attr("fill", d => color(d.key))
+                .style('fill-opacity', 0.1)
+                .attr("stroke", d=> color(d.key))
+                .attr("stroke-width", 1.5)
+                .attr("d", function(d){
+                    console.log("data", d)
+                    return d3.line()
+                    .curve(d3.curveCardinal)
+                    .x(function(d) { return x(new Date(d.date))})
+                    // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
+                    //.y0( height )
+                    .y(function(d) { return y(parseFloat(d.temp_avg)); })
+                    (d.values)
+                })
+                .on('mouseover', function(d) {
+                    console.log("data----here", d.key);
+                    var mouse = d3.mouse(this);
+                    var station = d.key;
+                    console.log(d3.event)
+                    console.log('mouse = ', mouse)
+                    
+                    var tooltip = d3.select(".chart-tooltip")
+                    
+                    tooltip.style('display', 'block')  
+                    .style('left', d3.event.pageX + 'px')
+                    .style('top', d3.event.pageY + 'px')
+                    
+                    var xDate = x.invert(mouse[0])
+                    var yTemp = y.invert(mouse[1]).toFixed(3)
+                    console.log("Temp----here", yTemp);
+                    console.log("Date----here", xDate);
+                    tooltip.html("<b> Station: </b>"+ station + "</br>" + "<b>  Date:</b> " + xDate.toISOString().split('T')[0] +  "</br>" + "<b> Daily Avg. Temp.:</b> " + yTemp);
+                    
+                    
+                    function doesChartExist() {
+                        return new Promise( (fulfill, reject) => {
+                            // comparer donnée survol et donnée ligne
+                            if (d3.select("#line-chart-hour2").selectAll('path.line').size() > 0) {
+                                let oldData = d3.select("#line-chart-hour2").select('path.line').datum()
+                                let oldStation =  d3.select("svg#chart-legend-hour2").select('text').node().innerHTML;
 
-    }
+                                console.log('old station = ', oldStation)
+                                console.log('old data = ', oldData)
+                                console.log('new data =', station, xDate.toISOString().split('T')[0] , oldData[0].date.split('T')[0])
 
-    
+                                if (oldStation != station)
+                                    fulfill(false)
+
+                                if (xDate.toISOString().split('T')[0] != oldData[0].date.split('T')[0])
+                                    fulfill(false)
+                                
+                                fulfill(true)
+                            } else fulfill(false)
+                        })
+                    }
+                    
+                    doesChartExist().then((value) => {
+                        console.log("resultat de la promise = ", value)
+                        if (value) return;
+                        endpoint.query(QueryObservationsByStation_Date(station, xDate.toISOString().split('T')[0]))
+                            .done((json) => onSuccessMember3HourlyTemp(json, station));
+                    })
+
+                })
+                
+                
+                //var tooltip = addTooltip();
+                var bisectDate = d3.bisector(d => d.date).left;
+                
+                // add SVG legend             
+                var svglegend = d3.select("svg#chart-legend-hour");
+                
+                let legendGroup = svglegend.selectAll('g').remove()
+                    .data(StationName)
+                    .enter()
+                    .append('g')
+                
+                
+                legendGroup.append('line')
+                    .style("stroke", d => color(d))
+                    .style("stroke-width", 3)
+                    .attr("x1", 0)
+                    .attr("y1", (d,i) => 10 + i * 15)
+                    .attr("x2", 30)
+                    .attr("y2", (d,i) => 10 + i * 15);
+                
+                legendGroup.append('text')
+                    .attr('x', 40)
+                    .attr('y', (d,i) => 10 + i * 17)
+                    .style('font-size', '11px')
+                    .text(d => d)
+                
+                
+                //append title
+                
+                legendGroup.append("text")
+                    .attr("x", 350)             
+                    .attr("y", 20)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "14px")
+                    .text("Daily Average Air Temperature (Region: " + newdata[0].region + ")" );    
+                
+            }
+            
+            function onSuccessMember3HourlyTemp (json, station)
+            {
+                // console.log(json)
+                
+                let margin = {left: 70, right: 20, bottom: 20, top: 80}
+                let width = 600, height = 300
+                
+                var svgChart = d3.select("svg#line-chart-hour2")
+                // console.log(svgChart)
+                
+                svgChart.selectAll('g').remove()
+                svgChart.selectAll("path.line").remove()
+                d3.select("svg#chart-legend-hour2").selectAll('text').remove()
+                
+                // svgChart.selectAll("path.line").datum()
+                
+                svgChart.attr('width', width + margin.left + margin.right)
+                    .attr('height', height + margin.bottom + margin.top)
+                    .append("g")
+                
+                let newdata = []
+                let data = json.results.bindings
+                
+                
+                for (let i = 0; i < data.length; i++) {
+                    newdata.push({
+                        date: data[i]['t'].value,
+                        temp: data[i]['temp'].value,
+                    })
+                    
+                }
+                
+                // console.log(newdata)
+                /* var sumstat = d3.nest()
+                .key(d => d.date)
+                .entries(newdata);
+                
+                console.log("sumstat", sumstat)*/
+                
+                var x = d3.scaleTime()
+                    .domain(d3.extent(newdata, d => new Date(d.date)))
+                    .range([ margin.left, width ])
+                
+                
+                svgChart.append("g")
+                    .attr("transform", `translate(0, ${height})`)
+                    .call(d3.axisBottom(x).ticks(8));
+                
+                
+                // Add Y axis
+                
+                var y = d3.scaleLinear()
+                    .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp) }))
+                    .range([ height,0 ]);
+                
+                yAxis = d3.axisLeft()
+                    .scale(y)
+                
+                svgChart.append("g")
+                    .attr("transform", `translate(${margin.left}, 0)`)
+                    .call(yAxis)
+                    
+                svgChart.append("text")
+                    .attr("transform", "translate(30,200)rotate(-90)")
+                    .text("Temperature");
+                
+                var line = d3.line()
+                    .curve(d3.curveCardinal)
+                    .x(function(d) { return x(new Date(d.date)); })
+                    .y(function(d) { return y(parseFloat(d.temp)); });  
+                
+                // console.log("line", line)
+                
+                /* var lines = svgChart.selectAll("lines")
+                .data(sumstat)
+                .enter()
+                .append("g");
+                */
+                
+                
+                svgChart.append("path")
+                    .datum(newdata)
+                    .attr("class", "line")
+                    .attr("d", function(d) { return line(d); })
+                    .attr("fill", "none") //.attr("fill", d => color(d.key))
+                    .style('fill-opacity', 0.1)
+                    .attr("stroke", "#ed3700");
+
+                // draw legend
+
+                var svglegend = d3.select("svg#chart-legend-hour2");
+                svglegend.append("text")
+                    .attr("x", '50%')             
+                    .attr("y", 20)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "14px")
+                    .text(station);
+                
+                
+                /* let line = svgChart.selectAll('g.line') 
+                .data(sumstat)
+                .enter()
+                .append('g')
+                .attr('class', 'line')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                
+                
+                line.append("path")
+                .attr("fill", "none") //.attr("fill", d => color(d.key))
+                .style('fill-opacity', 0.1)
+                .attr("stroke-width", 1.5)
+                .attr("d", function(d){
+                    console.log("data", d)
+                    return d3.line()
+                    .curve(d3.curveCardinal)
+                    .x(function(d) { return x(new Date(d.date))})
+                    .y(function(d) { return y(parseFloat(d.temp)); })
+                    (d.values)
+                })
+                */
+                
+            }
+            
+            
+            
+            
+            
+            
+            
+            /*      lineGroup.selectAll('circle')
+            .data(d => d.values)
+            .enter()
+            .append('circle')
+            .attr('cx', d => suffix === 'date' ? x(new Date(d.time)) : x(d.time))
+            .attr('cy', d => y(parseFloat(d.value)))
+            .attr('r', 3)
+            .attr('stroke', d => color(d.name))
+            .attr('fill', 'white')
+            .on('click', d => {
+                switch(suffix) {
+                    case 'month': // query data per day for a particular month
+                    endpoint.query(build_queryByMonth(d.time, insee)).done(function(json) { onSuccessMember3(json, 'date', d.time, insee)});
+                    break;
+                    
+                    case 'date': // query data per hour for a particular day
+                    endpoint.query(buildQuery_slices(d.time, insee)).done(function(json) { onSuccessMember3(json, 'hour', d.time, insee)});
+                    break;
+                }
+                
+            })
+            
+            */
+            
+            
+            
+            
+            
+            function onSuccessMember3(json, suffix, value) {
+                
+                let data = json.results.bindings
+                let insee = arguments.length > 3 ? arguments[3] : value
+                
+                
+                
+                let margin = {left: 20, right: 20, bottom: 20, top: 80}
+                let width = 600, height = 300
+                
+                var svgChart = d3.select("svg#line-chart-" + suffix)
+                
+                svgChart.selectAll('g').remove()
+                
+                svgChart.attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.bottom + margin.top)
+                .append("g")
+                
+                console.log("data", json.results.bindings)
+                
+                
+                
+                // data preparation for d3
+                let newdata = []
+                
+                for (let i = 0; i < data.length; i++) {
+                    
+                    for (let key of ["max_temp", "avg_temp", "min_temp", ]) {
+                        newdata.push({
+                            time: data[i][suffix].value,
+                            name: key,
+                            value: data[i][key].value
+                            
+                        })
+                    }
+                }
+                
+                console.log("newdata", newdata)
+                var sumstat = d3.nest()
+                .key(function(d) { return d.name;})
+                .entries(newdata)
+                console.log("groupeddata", sumstat)
+                
+                var x;
+                if (suffix == "month") {
+                    // Add X axis --> it is a date format
+                    x = d3.scaleLinear()
+                    .domain(d3.extent(newdata, function(d) { return +d.time; }))
+                } else if (suffix == "date") {
+                    console.log("time = ", d3.extent(newdata, d => new Date(d.time)))
+                    x = d3.scaleTime()
+                    .domain(d3.extent(newdata, d => new Date(d.time)))
+                }
+                
+                x.range([ 0, width ])
+                
+                svgChart.append("g")
+                .attr("transform", `translate(${margin.left}, ${height})`)
+                .call(d3.axisBottom(x).ticks(12));
+                
+                // Add Y axis
+                var y = d3.scaleLinear()
+                .domain(d3.extent(newdata, function(d) { return parseFloat(d.value) }))
+                .range([ height, 0 ]);
+                
+                svgChart.append("g")
+                .attr("transform", `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y));
+                
+                
+                // color palette
+                var res = sumstat.map(function(d){ return d.key }) // list of group names
+                var color = d3.scaleOrdinal()
+                .domain(res)
+                .range(['#ff0000','#32cd32','#0000cd'])
+                
+                
+                let lineGroup = svgChart.selectAll('g.lineGroup') 
+                .data(sumstat)
+                .enter()
+                .append('g')
+                .attr('class', 'lineGroup')
+                .attr('transform', `translate(${margin.left}, 0)`)
+                
+                
+                lineGroup.append("path")
+                .attr("fill", d => color(d.key))
+                .style('fill-opacity', 0.1)
+                .attr("stroke", function(d){ return color(d.key) })
+                .attr("stroke-width", 1.5)
+                .attr("d", function(d){
+                    return d3.area()
+                    .curve(d3.curveCardinal)
+                    .x(function(d) { return suffix === 'date' ? x(new Date(d.time)) : x(d.time); })
+                    // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
+                    .y0( height )
+                    .y1(function(d) { return y(parseFloat(d.value)); })
+                    (d.values)
+                })   
+                .on("mouseover", function (d) {                                  
+                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
+                    .style("stroke-width",'3px');
+                    var selectthegraphs = $('.g.lineGroup').not(this);     //select all the rest of the lines, except the one you are hovering on and drop their opacity
+                    d3.selectAll(selectthegraphs)
+                    .style("opacity",0.2);
+                })
+                .on("mouseout", function (d) {                                  
+                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
+                    .style("stroke-width",'1.5px');
+                    
+                })
+                
+                // create tooltip 
+                
+                
+                
+                // show points as circles 
+                
+                lineGroup.selectAll('circle')
+                .data(d => d.values)
+                .enter()
+                .append('circle')
+                .attr('cx', d => suffix === 'date' ? x(new Date(d.time)) : x(d.time))
+                .attr('cy', d => y(parseFloat(d.value)))
+                .attr('r', 3)
+                .attr('stroke', d => color(d.name))
+                .attr('fill', 'white')
+                .on('click', d => {
+                    switch(suffix) {
+                        case 'month': // query data per day for a particular month
+                        endpoint.query(build_queryByMonth(d.time, insee)).done(function(json) { onSuccessMember3(json, 'date', d.time, insee)});
+                        break;
+                        
+                        case 'date': // query data per hour for a particular day
+                        endpoint.query(buildQuery_slices(d.time, insee)).done(function(json) { onSuccessMember3(json, 'hour', d.time, insee)});
+                        break;
+                    }
+                    
+                })
+                .on("mouseover", function(event) { 
+                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
+                    .style("stroke-width",'3px');
+                    tooltip.style("display", null);
+                    d3.select('#tooltip-date')
+                    .text("d => d.time");
+                    d3.select('#tooltip-close')
+                    .text("d => d.value ");
+                })
+                .on("mouseout", function(event) {
+                    tooltip.style("display", "none");
+                })
+                
+                /*.on("mouseover", function (d) {                                  
+                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
+                    .style("stroke-width",'3px');
+                    
+                    var selectthegraphs = $('.g.lineGroup').not(this);     //select all the rest of the lines, except the one you are hovering on and drop their opacity
+                    d3.selectAll(selectthegraphs)
+                    .style("opacity",0.2);
+                })
+                .on("mouseout", function (d) {                                  
+                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
+                    .style("stroke-width",'1.5px');
+                    
+                })*/
+                
+                
+                //var selectthegraphs = $('.thegraph').not(this);     //select all the rest of the lines, except the one you are hovering on and drop their opacity
+                //d3.selectAll(selectthegraphs)
+                //.style("opacity",0.2);
+                
+                //var getname = document.getElementById(d.name);    //use get element cause the ID names have spaces in them
+                //var selectlegend = $('.legend').not(getname);    //grab all the legend items that match the line you are on, except the one you are hovering on
+                
+                //d3.selectAll(selectlegend)    // drop opacity on other legend names
+                //.style("opacity",.2);
+                
+                //d3.select(getname)
+                //  .attr("class", "legend-select");  //change the class on the legend name that corresponds to hovered line to be bolder        	
+                //})
+                ////////////////// chart legend 
+                
+                
+                let svgLegend = d3.select('svg#chart-legend-' + suffix)
+                
+                
+                console.log('insee', insee)
+                svgLegend.append('text')
+                .attr('x', 350)
+                .attr('y', (d,i) => 10 + i * 17)
+                .style('font-size', '11px')
+                .attr("text-anchor", "middle")
+                .style("fill", "#5a5a5a")
+                .style("font-family", "Raleway")
+                .style("font-weight", "300")
+                .style("font-size", "18px")
+                
+                console.log("res = ", res)
+                
+                let legendGroup = svgLegend.selectAll('g')
+                .data(res)
+                .enter()
+                .append('g')
+                
+                legendGroup.append('line')
+                .style("stroke", d => color(d))
+                .style("stroke-width", 3)
+                .attr("x1", 0)
+                .attr("y1", (d,i) => 10 + i * 15)
+                .attr("x2", 30)
+                .attr("y2", (d,i) => 10 + i * 15);
+                
+                legendGroup.append('text')
+                .attr('x', 40)
+                .attr('y', (d,i) => 10 + i * 17)
+                .style('font-size', '11px')
+                .text(d => d)
+                
+            }
+            
+            map.on("viewreset", reset);
+            
+            reset();
+            
+            // fit the SVG element to leaflet's map layer
+            function reset() {
+                bounds = path.bounds(geoShape[0]);
+                
+                var topLeft = bounds[0],
+                bottomRight = bounds[1];
+                
+                svg.attr("width", bottomRight[0] - topLeft[0])
+                .attr("height", bottomRight[1] - topLeft[1])
+                .style("left", topLeft[0] + "px")
+                .style("top", topLeft[1] + "px");
+                
+                g .attr("transform", "translate(" + -topLeft[0] + "," 
+                + -topLeft[1] + ")");
+                
+                // initialize the path data	
+                d3_features.attr("d", path)
+                .style("fill-opacity", 0.2);
+                //.attr('fill','blue');
+            } 
+            
+            // Use Leaflet to implement a D3 geometric transformation.
+            function projectPoint(x, y) {
+                var point = map.latLngToLayerPoint(new L.LatLng(y, x));
+                this.stream.point(point.x, point.y);
+            }
+            
+        })
+        
+        
+        
+        
+        function buildQuery_stations(insee) {
+            var queryStations = `PREFIX dct: <http://purl.org/dc/terms/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            PREFIX geosparql:  <http://www.opengis.net/ont/geosparql#> 
+            SELECT distinct * WHERE
+            {
+                ?station rdfs:label ?stationName; dct:spatial [ wdt:P131 [rdfs:label ?label ; wdt:P2585 '`+ insee +`']];  geo:lat ?lat; geo:long ?long .
+            }
+            `
+            return queryStations
+            
+        }
+        
+        function QueryObservationsByStation_Date(station, date) {
+            var query = `
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            PREFIX sosa: <http://www.w3.org/ns/sosa/>
+            PREFIX wep: <http://ns.inria.fr/meteo/ontology/property/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+            PREFIX wevp: <http://ns.inria.fr/meteo/vocab/weatherproperty/> 
+            
+            SELECT ?t  ((?v - 273.15) as ?temp) ?station WHERE 
+            {
+                VALUES ?station  {"`+ station +`" }  
+                VALUES ?date { "`+ date +`"}  
+                ?obs a  weo:MeteorologicalObservation; 
+                sosa:observedProperty wevp:airTemperature ;
+                sosa:hasSimpleResult  ?v; 
+                wep:madeByStation ?s ;
+                sosa:resultTime ?t . 
+                ?s rdfs:label ?station .
+                
+                FILTER(xsd:date(?t) = xsd:date(?date))
+                #FILTER(xsd:date(?t) >= xsd:date(?jourPrecedent))
+                #BIND ( bif:dateadd('day', -1, xsd:date(?date)) as ?jourPrecedent)
+                #BIND ( bif:dateadd('day', 1, xsd:date(?date)) as ?jourSuivant)
+                #FILTER(xsd:date(?t)<= ?jourSuivant)
+                
+            } 
+            ORDER BY ?t
+            
+            `
+            return query
+            
+            
+        }
+        
+        function buildQuery_slices(insee) {
+            console.log('code = ', insee)
+            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
+            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            PREFIX qb:  <http://purl.org/linked-data/cube#>
+            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
+            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
+            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX dct: <http://purl.org/dc/terms/>
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            
+            SELECT ?month (AVG(?temp_avg) as ?avg_temp)  (AVG(?temp_min) as ?min_temp) (AVG(?temp_max) as ?max_temp) ?label WHERE
+            {
+                ?s  a qb:Slice ;
+                wes-dimension:station ?station ;
+                wes-dimension:year "2021"^^xsd:gYear ;
+                qb:observation [
+                a qb:Observation ;
+                wes-attribute:observationDate ?date ;
+                wes-measure:avgDailyTemperature ?temp_avg; 
+                wes-measure:minDailyTemperature ?temp_min; 
+                wes-measure:maxDailyTemperature ?temp_max] .
+                
+                ?station a weo:WeatherStation ; dct:spatial ?e.                                
+                ?e wdt:P131 ?item .
+                ?item rdfs:label ?label ; wdt:P2585  '`+ insee +`' .
+                BIND(MONTH(?date) as ?month)
+            }
+            GROUP BY ?month ?label
+            ORDER BY ?month
+            `
+            return query
+            
+        }
+        
+        function buildQuery_slices1(insee) {
+            console.log('code = ', insee)
+            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
+            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            PREFIX qb:  <http://purl.org/linked-data/cube#>
+            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
+            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
+            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX dct: <http://purl.org/dc/terms/>
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            
+            SELECT distinct ?date ?Nstation ?temp_avg ?label WHERE
+            {
+                ?s  a qb:Slice ;
+                wes-dimension:station ?station ;
+                wes-dimension:year "2021"^^xsd:gYear ;
+                qb:observation [
+                a qb:Observation ;
+                wes-attribute:observationDate ?date ;
+                wes-measure:avgDailyTemperature ?temp_avg] .
+                
+                ?station a weo:WeatherStation ; dct:spatial ?e; rdfs:label ?Nstation.                            
+                ?e wdt:P131 ?item .
+                ?item rdfs:label ?label ; wdt:P2585  '`+ insee +`' .
+                #BIND(month(?date) as ?month)
+            }
+            GROUP BY ?date ?Nstation ?label 
+            ORDER BY ?date
+            `
+            return query
+            
+        }
+        
+        function buildquery_closetStation(long,lat)
+        {
+            var query = `
+            PREFIX geo:        <http://www.w3.org/2003/01/geo/wgs84_pos#> 
+            PREFIX geosparql:  <http://www.opengis.net/ont/geosparql#> 
+            PREFIX geof:       <http://www.opengis.net/def/function/geosparql/>  
+            PREFIX uom:        <http://www.opengis.net/def/uom/OGC/1.0/> 
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            SELECT ?URI_station ?Name_Station ?lat ?long ?alt ?coordinates ?Region WHERE 
+            {
+                ?URI_station rdfs:label ?Name_Station ;
+                geosparql:hasGeometry [ geosparql:asWKT ?coordinates];
+                geo:lat ?lat; geo:long ?long ; geo:altitude ?alt ; dct:spatial ?e. 
+                ?e wdt:P131 ?Region .
+                
+                BIND("Point(`+ long +` `+ lat +`)"^^geosparql:wktLiteral as ?Currentposition)
+                BIND (geof:distance(?coordinates,?Currentposition , uom:metre) as ?distance)      
+            }
+            ORDER BY ?distance
+            LIMIT 1`
+            return query
+        }
+        function Query_slices_byStation(uri_station) {
+            var query = `
+            PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
+            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            PREFIX qb:  <http://purl.org/linked-data/cube#>
+            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
+            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
+            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX dct: <http://purl.org/dc/terms/>
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            
+            SELECT distinct ?date ?Nstation ?temp_avg ?temp_min ?temp_max ?label WHERE
+            {
+                VALUES ?station {<`+ uri_station +`>}
+                VALUES ?year  {"2021"^^xsd:gYear }
+                ?s  a qb:Slice ;
+                wes-dimension:station ?station  ;
+                
+                wes-dimension:year ?year;
+                qb:observation [
+                a qb:Observation ;
+                wes-attribute:observationDate ?date ;
+                wes-measure:avgDailyTemperature ?temp_avg; 
+                wes-measure:minDailyTemperature ?temp_min; 
+                wes-measure:maxDailyTemperature ?temp_max] .
+                ?station a weo:WeatherStation ; rdfs:label ?Nstation .
+                #BIND(month(?date) as ?month)
+            }
+            
+            ORDER BY ?date
+            `
+            return query
+            
+        }
+        
+        function build_queryByMonth(month, insee)
+        {
+            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
+            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            PREFIX qb: <http://purl.org/linked-data/cube#>
+            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
+            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
+            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX dct: <http://purl.org/dc/terms/>
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            
+            SELECT ?date (AVG(?temp_avg) as ?avg_temp) (AVG(?temp_min) as ?min_temp) (AVG(?temp_max) as ?max_temp) ?label WHERE
+            {
+                ?s a qb:Slice ;
+                wes-dimension:station ?station ;
+                wes-dimension:year "2021"^^xsd:gYear ;
+                qb:observation [
+                a qb:Observation ;
+                wes-attribute:observationDate ?date ;
+                wes-measure:avgDailyTemperature ?temp_avg; 
+                wes-measure:minDailyTemperature ?temp_min; 
+                wes-measure:maxDailyTemperature ?temp_max] .
+                
+                ?station a weo:WeatherStation ; dct:spatial ?e. 
+                ?e wdt:P131 ?item .
+                ?item rdfs:label ?label ; wdt:P2585 '`+ insee +`' .
+                BIND(MONTH(?date) as ?month)
+                FILTER (?month =`+ month +` )
+            }
+            GROUP BY ?date ?label
+            ORDER BY ?date`
+            
+            return query
+            
+        }
+        
+        
     </script>
 </body>
 </html>

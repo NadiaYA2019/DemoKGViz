@@ -17,16 +17,17 @@
     border-radius: 8px;
     pointer-events: none;
 }
+
 #map { height: 180px; }
 
-path {
+.map-border {
     fill: #000;
     fill-opacity: .2;
     stroke: #fff;
     stroke-width: 1.5px;
   }
   
-  path:hover {
+.map-border:hover {
     fill: brown;
     fill-opacity: .7;
   }
@@ -37,3 +38,62 @@ path {
     text-align: center;
     color: blueviolet;
 }
+
+.line-chart-div{
+  width: 800px; 
+  height: 400px; 
+  position: relative;
+}
+
+.dataviz-1{
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  position: relative;
+  top: 0;
+}
+
+.dataviz-2{
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  position: center;
+  top: 50%;
+}
+.separator{
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  height: 100px;
+  position: center;
+  top: 50%;
+}
+
+.objecttable {
+  border-collapse: collapse;
+}
+
+
+.table {
+  --bs-table-color: var(--bs-gray-600);
+  --bs-table-bg: var(--bs-gray-100);
+  --bs-table-border-color: transparent;
+}
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+.chart-tooltip {                                                        /* NEW */
+  background: #eee;                                               /* NEW */
+  box-shadow: 0 0 5px #999999;                                    /* NEW */
+  color: #333;                                                    /* NEW */
+  display: none;                                                  /* NEW */
+  font-size: 12px;                                                /* NEW */
+  left: 400px;                                                    /* NEW */
+  padding: 10px;                                                  /* NEW */
+  position: absolute;                                             /* NEW */
+  text-align: center;                                             /* NEW */
+  top: 500px;                                                      /* NEW */
+  width: 15%;                                                    /* NEW */
+  z-index: 10;                                                    /* NEW */
+}     
