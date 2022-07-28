@@ -60,7 +60,11 @@
             };
         };
     </script>
-    
+
+    <!-- Setting up global variables: regions and departments -->
+    <script type="text/javascript" src="./data/departments.js"></script>
+    <script type="text/javascript" src="./data/regions.js"></script>
+
     <script>
         
         var endpoint = new SPARQL({ 
@@ -85,9 +89,10 @@
         
         console.log("test")
         var path;
-        Promise.all([d3.json("./data/regions.geojson")]).then(function(geoShape) {
+        Promise.all([regions]).then(function(geoShape) {
+        //Promise.all([d3.json("./data/regions.geojson")]).then(function(geoShape) {
             console.log("here")
-            
+          
             var transform = d3.geoTransform({point: projectPoint}),
             path = d3.geoPath().projection(transform);
             
