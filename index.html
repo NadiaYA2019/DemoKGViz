@@ -202,28 +202,28 @@
                 var tbody = table.append("tbody");
                 
                 var rows = tbody.selectAll("tr")
-                .data(infoStation)
-                .enter()
-                .append("tr");
+                                .data(infoStation)
+                                .enter()
+                                .append("tr");
                 
                 var cells = rows.selectAll('td')
-                .data(function (row) {
-                    return columns.map(function (column) {
-                        return {column: column, value: row[column]};
-                    });
-                })
-                .enter()
-                .append('td')
-                .html(function (d) { 
-                    if (d.value.startsWith("http"))
-                    {
-                        return "<a href="+ d.value +">" + d.value + "</a>"
-                    }
-                    else
-                    {return d.value;}
-                })
-                .style("border-bottom", "1px black solid")
-                .style("padding", "15px");
+                                .data(function (row) {
+                                    return columns.map(function (column) {
+                                        return {column: column, value: row[column]};
+                                    });
+                                })
+                                .enter()
+                                .append('td')
+                                .html(function (d) { 
+                                    if (d.value.startsWith("http"))
+                                    {
+                                        return "<a href="+ d.value +">" + d.value + "</a>"
+                                    }
+                                    else
+                                    {return d.value;}
+                                })
+                                .style("border-bottom", "1px black solid")
+                                .style("padding", "15px");
                 
                 
                 let uri_station = res.results.bindings[0][res.head.vars[0]]['value'];
@@ -286,7 +286,7 @@
                 var x = d3.scaleTime()
                            .domain(d3.extent(newdata, d => new Date(d.date)))
                 
-                x.range([ 0, width ])
+                x.range([0, width ])
                 
                 //var xAxis = d3.axisBottom(x).ticks(20)
                 
@@ -297,9 +297,9 @@
                 //var xAxis = d3.axisBottom(x).ticks(20)
 
                 var xAxis = svgChart.append("g")
-                    .attr('id', 'line-chart-hour1-x-axis') /// je le donne un id pour séléctionner ce groupe lors de la transition
-                    .attr("transform", `translate(${margin.left}, ${height})`)
-                    .call(d3.axisBottom(x).ticks(20));
+                                    .attr('id', 'line-chart-hour1') /// je le donne un id pour séléctionner ce groupe lors de la transition
+                                    .attr("transform", `translate(${margin.left}, ${height})`)
+                                    .call(d3.axisBottom(x));
                 
                 
                 // Add Y axis
@@ -407,6 +407,13 @@
                     lineGroup.append("g")
                             .attr("class", "brush")
                             .call(brush);
+                    
+                    var clipPath = lineGroup.append("defs")
+                            .append("clipPath")
+                            .attr("id", "clip")
+                            .append("rect")
+                            .attr("width", width)
+                            .attr("height", height);
 // 
                     var idleTimeout
                     function idled() { idleTimeout = null; }
@@ -419,13 +426,17 @@
                             // If no selection, back to initial coordinate. Otherwise, update X axis domain
                             if(!extent){
 
-                                if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
+                                if (!idleTimeout) return idleTimeout = setTimeout(idled, 350);
+                                             // This allows to wait a little bit
                                             
                             }
                             else
                             {
-                                    x.domain([x.invert(extent[0]), x.invert(extent[1]) ])
+                                    
+                                    x.domain([+x.invert(extent[0]), +x.invert(extent[1])])
                                     lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+                                    
+
                             }
                             
                             
@@ -434,7 +445,9 @@
                             xAxis.transition().duration(500).call(d3.axisBottom(x))
                             lineGroup.selectAll("path")
                                     .transition().duration(1000)
+                                    .attr("clip-path", "url(#clip)")
                                     .attr("d", function(d){
+                                            console.log("data brush", d)
                                             return d3.line()
                                             .curve(d3.curveCardinal)
                                             .x(function(d) { return x(new Date(d.date))})
@@ -564,28 +577,28 @@
                 var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6])
 
                 let lineGroup = svgChart.selectAll('g.lineGroup') 
-                .data(sumstat)
-                .enter()
-                .append('g')
-                .attr('class', 'lineGroup')
-                .attr('transform', `translate(${margin.left}, 0)`)
-                
+                                        .data(sumstat)
+                                        .enter()
+                                        .append('g')
+                                        .attr('class', 'lineGroup')
+                                        .attr('transform', `translate(${margin.left}, 0)`)
+                                        
                 
                 lineGroup.append("path")
-                .attr("fill", "none") //.attr("fill", d => color(d.key))
-                .style('fill-opacity', 0.1)
-                .attr("stroke", d=> color(d.key))
-                .attr("stroke-width", 1.5)
-                .attr("d", function(d){
-                    console.log("data", d)
-                    return d3.line()
-                    .curve(d3.curveCardinal)
-                    .x(function(d) { return x(new Date(d.date))})
-                    // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
-                    //.y0( height )
-                    .y(function(d) { return y(parseFloat(d.temp)); })
-                    (d.values)
-                })
+                        .attr("fill", "none") //.attr("fill", d => color(d.key))
+                        .style('fill-opacity', 0.1)
+                        .attr("stroke", d=> color(d.key))
+                        .attr("stroke-width", 1.5)
+                        .attr("d", function(d){
+                            //console.log("data", d)
+                            return d3.line()
+                            .curve(d3.curveCardinal)
+                            .x(function(d) { return x(new Date(d.date))})
+                            // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
+                            //.y0( height )
+                            .y(function(d) { return y(parseFloat(d.temp)); })
+                            (d.values)
+                        })
 
                 var svglegend = d3.select("svg#chart-legend-hour2");
                 
@@ -620,7 +633,7 @@
                     .text("Daily Average Air Temperature (Region: " + newdata[0].region + ")" );    
                 
             // Vertical Mouse 
-            var mouseG = svgChart.append("g")
+           /* var mouseG = svgChart.append("g")
                     .attr("class", "mouse-over-effects");
 
             mouseG.append("path") // this is the black vertical line to follow mouse
@@ -679,7 +692,7 @@
                 .data(sumstat)
                 .enter()
                 .append("g");
-                */
+             
                 
                 
                /* svgChart.append("path")
