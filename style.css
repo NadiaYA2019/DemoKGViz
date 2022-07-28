@@ -113,3 +113,9 @@
   width: 15%;                                                    /* NEW */
   z-index: 10;                                                    /* NEW */
 }     
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
