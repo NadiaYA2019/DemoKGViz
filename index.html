@@ -98,7 +98,7 @@
             .classed('map-border', true)
             .style("fill-opacity", 0.2)
             .on("click", function(event, d) {
-                console.log('clicked!')
+                //console.log('clicked!')
                 
                 //display stations for some region on the map
                 endpoint.query(buildQuery_stations(regions.features[d].properties.code)).done(onSuccessMember1);
@@ -106,7 +106,7 @@
                 //display air Temperatures Times Series on the map
                 endpoint.query(buildQuery_slices1(regions.features[d].properties.code))
                 .done(function(json) { 
-                    console.log("new data = ", regions.features[d].properties.code, json)
+                    //console.log("new data = ", regions.features[d].properties.code, json)
                     // onSuccessMember4(json, 'month', regions.features[d].properties.code)
                     drawCharts(json, regions.features[d].properties.code)
                 });
@@ -165,6 +165,10 @@
 
             drawLineChart(chartdata, "line-chart-hour1", region)
             drawLegend(stationnames, chartdata[0].region, "chart-legend-hour1")
+
+            d3.select('svg#line-chart-hour2').selectAll('g').remove()
+            d3.select('svg#chart-legend-hour2').selectAll('g').remove()
+            d3.select('svg#line-chart-hour2').selectAll("text").remove()
         }
 
         function getData(json) {
@@ -216,10 +220,17 @@
             var idleTimeout
             function idled() { idleTimeout = null; }
 
+           /* function brushed({selection}) {
+                if (selection) {
+                    svg.property("value", selection.map(x.invert, x).map(d3.utcDay.round));
+                    svg.dispatch("input");
+                 }
+            }
+            */
              // A function that update the chart for given boundaries
             function updateChart() {
 
-                extent = d3.event.selection
+                extent = d3.brushSelection(this); //d3.event.selection
                 // If no selection, back to initial coordinate. Otherwise, update X axis domain
                 if(!extent){
                     if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
@@ -261,7 +272,8 @@
             
             svglegend.selectAll('g').remove()
                                     
-            let legendGroup = svglegend.selectAll('g').data(StationName)
+            let legendGroup = svglegend.selectAll('g')
+                                    .data(StationName)
                                     .enter()
                                     .append('g')
             
@@ -278,13 +290,24 @@
                 .attr('y', (d,i) => 10 + i * 17)
                 .style('font-size', '11px')
                 .text(d => d)
-            
+                
+            if (id === "chart-legend-hour2") 
+            {
+                legendGroup.append("text")
+                .attr("x", 350)             
+                .attr("y", 20)
+                .attr("text-anchor", "middle")
+                .style("font-size", "14px")
+                .text("Air Temperature Per Station (Region: " + region + ")" ); 
+            }
+            else
+            {
             legendGroup.append("text")
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
                 .style("font-size", "14px")
-                .text("Daily Average Air Temperature (Region: " + region + ")" );    
+                .text("Daily Average Air Temperature Per Station (Region: " + region + ")" ); }
         }
 
         function drawLineChart(newdata, id, insee) {
@@ -299,6 +322,7 @@
             console.log(width, height)
             
             svgChart.selectAll('g').remove()
+            svgChart.selectAll("text").remove()
             
             svgChart.attr('width', width)
                 .attr('height', height)
@@ -331,13 +355,14 @@
             var year = new Date(newdata[0].date).getYear();
             
             
-                svgChart.append("g")
+            svgChart.append("g")
                     .attr("transform", `translate(${margin.left}, ${margin.top})`)
                     .call(yAxis)
             
             svgChart.append("text")
-                .attr("transform", "translate(15,200)rotate(-90)")
-                .text("Temperature");
+                .attr("transform", `translate(10,${height/2})rotate(-90)`)
+                .style("font-size", "12px")
+                .text("Temperature in °C");
 
             let lineGroup = svgChart.selectAll('g.lineGroup') 
                 .data(sumstat)
@@ -358,6 +383,7 @@
                         .y(function(d) { return scales[id].y(parseFloat(d.temp_avg)); })
                         (d.values)
                 })
+                .on("mouseout", () => d3.select(".chart-tooltip").style("display", "none"))
                 .on('mouseover', function(d) {
                     if (this.parentNode.parentNode.id == 'brush-chart') return;
 
@@ -370,8 +396,8 @@
                     var tooltip = d3.select(".chart-tooltip")
                     
                     tooltip.style('display', 'block')  
-                    .style('left', d3.event.pageX + 'px')
-                    .style('top', d3.event.pageY + 'px')
+                    .style('left', d3.event.pageX + 10 + 'px')
+                    .style('top', d3.event.pageY + 10 + 'px')
                     
                     var xDate = scales[id].x.invert(mouse[0])
                     var yTemp = scales[id].y.invert(mouse[1]).toFixed(3)
@@ -387,9 +413,9 @@
                                 let oldData = d3.select("#line-chart-hour2").select('path.line').datum()
                                 let oldStation =  d3.select("svg#chart-legend-hour2").select('text').node().innerHTML;
 
-                                // console.log('old station = ', oldStation)
-                                // console.log('old data = ', oldData)
-                                // console.log('new data =', station, xDate.toISOString().split('T')[0] , oldData[0].date.split('T')[0])
+                                console.log('old station = ', oldStation)
+                                console.log('old data = ', oldData)
+                                console.log('new data =', station, xDate.toISOString().split('T')[0] , oldData[0].date.split('T')[0])
 
                                 if (oldStation != station)
                                     fulfill(false)
@@ -405,22 +431,23 @@
                     doesChartExist().then((value) => {
                         // console.log("resultat de la promise = ", value)
                         if (value) return;
-                        endpoint.query(QueryObservationsByDate(insee, xDate.toISOString().split('T')[0]))
-                            .done((json) => {
-
+                        endpoint.query(QueryObservationsByDate(insee, xDate.toISOString().split('T')[0])).done((json) => {
                                 // legend exists
                                 if (d3.select('svg#chart-legend-hour2').selectAll('g').empty()) {
-                                    drawLegend(json.results.bindings.map(d => d.station.value), insee, "chart-legend-hour2")
+                                    stationnames = json.results.bindings.map(d => d.station.value)
+                                    drawLegend(stationnames, region, "chart-legend-hour2")
                                 } else {
                                     // change title
                                 }
-
+                                stationnames = json.results.bindings.map(d => d.station.value)
+                                stationnames = stationnames.filter( (d,i) => stationnames.indexOf(d) === i)
+                                drawLegend(stationnames, region, "chart-legend-hour2")
                                 onSuccessMember3HourlyTemp(json)
 
                             } );
                     })
 
-                })
+                }) 
         }
         
    
@@ -430,7 +457,7 @@
         function onSuccessMember3HourlyTemp (json)
         {
             
-            console.log("3Hourly Temperature", json)
+            //console.log("3Hourly Temperature", json)
             
             let margin = {left: 70, right: 20, bottom: 20, top: 80}
             let width = 600, height = 300
@@ -464,9 +491,9 @@
                             .entries(newdata);
 
             var StationName = sumstat.map(function(d) {return d.key}) 
-            console.log(StationName)
+            //console.log(StationName)
 
-            console.log("sumstat--- 3Hours", sumstat)
+            //console.log("sumstat--- 3Hours", sumstat)
             
             var x = d3.scaleTime()
                         .domain(d3.extent(newdata, d => new Date(d.date)))
