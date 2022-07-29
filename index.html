@@ -18,21 +18,21 @@
     <div class="dataviz">
         <div class="dataviz-1">
             <div id="map" ></div>
-            <div class="line-chart-div">
-                <svg id="brush-chart" width="600" height="100"></svg>
-            </div>
         </div>
 
         <div class="dataviz-2">
+            <div class="line-chart-div" style="width:600px; height:100px; ">
+                <svg id="brush-chart"></svg>
+            </div>
     
-            <div class="line-chart-div1" >
+            <div class="line-chart-div1" style="width:600px; height:400px; ">
                 <svg id="chart-legend-hour1" width="600" height="80"></svg>
-                <svg id="line-chart-hour1" width="600" height="300"></svg>
+                <svg id="line-chart-hour1" ></svg>
             </div>
             
-            <div class="line-chart-div2">
+            <div class="line-chart-div2" style="width:600px; height:200px; ">
                 <svg id="chart-legend-hour2" width="600" height="80"></svg>
-                <svg id="line-chart-hour2" width="600" height="300"></svg>
+                <svg id="line-chart-hour2" ></svg>
             </div>
         </div>
     </div>
@@ -45,9 +45,11 @@
     <script src="./js/leaflet.js"></script>
     <script src="./js/colorbrewer.v1.min.js"></script>
     <script src="./js/bootstrap.min.js"></script>
+
     <!-- Setting up global variables: regions and departments -->
     <script type="text/javascript" src="./js/departments.js"></script>
     <script type="text/javascript" src="./js/regions.js"></script>
+    <script type="text/javascript" src="./js/queries.js"></script>
     
     
     <script type="text/javascript">
@@ -64,47 +66,32 @@
     </script>
 
     <script>
-        
-        
 
         var endpoint = new SPARQL({ 
             apikey: "YOUR-API-KEY-HERE", 
             endpoint: "http://weakg.i3s.unice.fr/sparql"
         });
-        
-        //let div = d3.select(".map")
-        
+
         var map = L.map('map').setView([47,2], 5);
         mapLink = 
-        '<a href="http://openstreetmap.org">OpenStreetMap</a>';
-        L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; ' + mapLink + ' Contributors',
-            maxZoom: 18,
-        }).addTo(map);
+            '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+            L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; ' + mapLink + ' Contributors',
+                maxZoom: 18,
+            }).addTo(map);
         
         // Add an SVG element to Leaflet’s overlay pane
         var svg = d3.select(map.getPanes().overlayPane).append("svg");
         var g = svg.append("g").attr("class", "leaflet-zoom-hide");
         
-        console.log("test")
-        var path;
-        Promise.all([regions]).then(function(geoShape) {
-        //Promise.all([d3.json("./data/regions.geojson")]).then(function(geoShape) {
-            console.log("here")
-          
-            var transform = d3.geoTransform({point: projectPoint}),
-            path = d3.geoPath().projection(transform);
-            
-            
-            // initialize the path data	
-            
-            
-            console.log(geoShape)
-            
-            // create path elements for each of the features
-            d3_features = g.selectAll("path")
-            .data(geoShape[0].features)
+        var path;  
+        var transform = d3.geoTransform({point: projectPoint}),
+        path = d3.geoPath().projection(transform);
+        
+        // create path elements for each of the features
+        d3_features = g.selectAll("path")
+            .data(regions.features)
             .enter()
             .append("path")
             .attr("d", path)
@@ -114,1179 +101,461 @@
                 console.log('clicked!')
                 
                 //display stations for some region on the map
-                endpoint.query(buildQuery_stations(geoShape[0].features[d].properties.code)).done(onSuccessMember1);
+                endpoint.query(buildQuery_stations(regions.features[d].properties.code)).done(onSuccessMember1);
                 
                 //display air Temperatures Times Series on the map
-                endpoint.query(buildQuery_slices1(geoShape[0].features[d].properties.code))
+                endpoint.query(buildQuery_slices1(regions.features[d].properties.code))
                 .done(function(json) { 
-                    console.log("new data = ", geoShape[0].features[d].properties.code, json)
-                    // onSuccessMember4(json, 'month', geoShape[0].features[d].properties.code)
-                    onSuccessMember4(json, geoShape[0].features[d].properties.code)
+                    console.log("new data = ", regions.features[d].properties.code, json)
+                    // onSuccessMember4(json, 'month', regions.features[d].properties.code)
+                    drawCharts(json, regions.features[d].properties.code)
                 });
-                
             })
-            
-            d3_features.attr("d", path)
+        
+        d3_features.attr("d", path)
             .style("fill-opacity", 0.2);
+
+        map.on("viewreset", reset);
+        reset();
+    
+        function onSuccessMember1(json) {
+        
+            $(".leaflet-marker-icon").remove();
+            $(".leaflet-popup").remove();
             
-            /*g.append("path")
-            .attr("d", path(geoShape))
-            .attr("fill", "lightgray")*/
+            var icon = new L.Icon.Default();
+            icon.options.shadowSize = [0,0];
             
-            
-            
-            function onSuccessMember1(json) {
+            for (var b in json.results.bindings) {
+                var station = json.results.bindings[b][json.head.vars[0]];
+                var stationName = json.results.bindings[b][json.head.vars[1]];
+                var lat = json.results.bindings[b][json.head.vars[3]];
+                var long = json.results.bindings[b][json.head.vars[4]];
                 
-                
-                $(".leaflet-marker-icon").remove();
-                $(".leaflet-popup").remove();
-                
-                var icon = new L.Icon.Default();
-                icon.options.shadowSize = [0,0];
-                
-                for (var b in json.results.bindings) {
-                    var station = json.results.bindings[b][json.head.vars[0]];
-                    //console.log(station['value'])
-                    var stationName = json.results.bindings[b][json.head.vars[1]];
-                    var lat = json.results.bindings[b][json.head.vars[3]];
-                    var long = json.results.bindings[b][json.head.vars[4]];
-                    
-                    L.marker([lat['value'], long['value']], {icon: icon}).on('click', markerOnClick).addTo(map)
+                L.marker([lat['value'], long['value']], {icon: icon})
+                    .addTo(map)
                     .bindPopup(stationName['value'])
                     .openPopup();
-                }
             }
+        }
+
+        let margin = {left: 40, right: 20, bottom: 20, top: 80}
+        var color = d3.scaleOrdinal()
+        let scales = {"brush-chart":{
+            x: d3.scaleTime(),
+            y: d3.scaleLinear()
+        }, "line-chart-hour1": {
+            x: d3.scaleTime(),
+            y: d3.scaleLinear()
+        }}
+
+        function drawCharts(json, region) {
+            // drawBrush()
+            // onSuccessMember4(json, region)
+            let chartdata = getData(json) // compute data for charts
+
+            let stationnames = chartdata.map(d => d.station) // ancien newdata
+            stationnames = stationnames.filter( (d,i) => stationnames.indexOf(d) === i)
+            console.log('names = ', stationnames)
+
+            color.domain(stationnames).range(colorbrewer.Set2[6]) 
+
+            drawLineChart(chartdata, "brush-chart", region)
+            drawBrush("brush-chart")
+
+            drawLineChart(chartdata, "line-chart-hour1", region)
+            drawLegend(stationnames, chartdata[0].region, "chart-legend-hour1")
+        }
+
+        function getData(json) {
+            let newdata = []
+            let data = json.results.bindings
             
-            function markerOnClick(e)
-            {
-                console.log("hi. you clicked the marker at " + e.latlng.lng + 'hhh' + e.latlng.lat );
-                endpoint.query(buildquery_closetStation(e.latlng.lng, e.latlng.lat)).done(affiche);
-                //console.log(Data_mostClosStation)
-                //let res = endpoint.query(buildquery_closetStation(e.latlng.lng, e.latlng.lat))
+            for (let i = 0; i < data.length; i++) {
+                newdata.push({
+                    date: data[i]['date'].value,
+                    station: data[i]['Nstation'].value,
+                    temp_avg: data[i]['temp_avg'].value,
+                    region: data[i]['label'].value
+                })
                 
-                //var query = buildquery_closetStation(e.latlng.lng,e.latlng.lat);
-                //console.log(query)
             }
+
+            return newdata
+        }
+
+        function drawBrush(id) {
+
+            var svgChart = d3.select(`svg#${id}`)
+
+            let width = svgChart.node().parentNode.clientWidth,
+                height = svgChart.node().parentNode.clientHeight;
+
+            console.log(width, height)
+
+            var brush = d3.brushX()                 // Add th e brush feature using the d3.brush function
+                        .extent([[0,0], [width - margin.left, height - margin.bottom] ] ) // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
+                        .on("end", updateChart) // Each time the brush selection changes, trigger the 'updateChart'
+                        //.on("brush", brushed)
+
+            let lineGroup = svgChart
+                .select('g.lineGroup')
+
+            lineGroup.append("g")
+                .attr("class", "brush")
+                .call(brush);
             
-          function affiche(res)
-            {
-                
-                console.log(res)   
-                var data = res.results.bindings
-                let data2 = res.head.vars
-                console.log("data2", data2)
-                console.log('data', data)
-                var infoStation = []
-                
-                
-                for (var b in res.results.bindings) {
-                    
-                    for (let i = 0; i < 7; i++) 
-                    {
-                        infoStation.push({
-                            "key": res.head.vars[i], 
-                            "value": res.results.bindings[b][res.head.vars[i]].value, 
-                        })
-                        
-                    }
-                    
+            var clipPath = d3.select(`svg#line-chart-hour1`)
+                .selectAll('g.lineGroup').append("defs")
+                .append("clipPath")
+                .attr("id", "clip")
+                .append("rect")
+                .attr("width", width - margin.left)
+                .attr("height", height - margin.bottom);
+   
+            var idleTimeout
+            function idled() { idleTimeout = null; }
+
+             // A function that update the chart for given boundaries
+            function updateChart() {
+
+                extent = d3.event.selection
+                // If no selection, back to initial coordinate. Otherwise, update X axis domain
+                if(!extent){
+                    if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
+                }
+                else
+                {
+                    scales["line-chart-hour1"].x.domain([ scales["brush-chart"].x.invert(extent[0]), scales["brush-chart"].x.invert(extent[1])])
+                    // console.log("x.invert(extent[0]", x.invert(extent[0]))
+                    // console.log("x.invert(extent[1]", x.invert(extent[1]))
+                    lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
                 }
                 
-                console.log("InfoStation", infoStation)
-                
-                
-                // = Object.keys(infoStation).map(function(k) { return {key:k, value:infoStation[k]} })
-                //console.log("info Stations", data)
-                columns = ['key', 'value']
-                var table = d3.select("body").select(".dataviz-1").select("#station").select("#objecttable").html("")
-                var tbody = table.append("tbody");
-                
-                var rows = tbody.selectAll("tr")
-                                .data(infoStation)
-                                .enter()
-                                .append("tr");
-                
-                var cells = rows.selectAll('td')
-                                .data(function (row) {
-                                    return columns.map(function (column) {
-                                        return {column: column, value: row[column]};
-                                    });
-                                })
-                                .enter()
-                                .append('td')
-                                .html(function (d) { 
-                                    if (d.value.startsWith("http"))
-                                    {
-                                        return "<a href="+ d.value +">" + d.value + "</a>"
-                                    }
-                                    else
-                                    {return d.value;}
-                                })
-                                .style("border-bottom", "1px black solid")
-                                .style("padding", "15px");
-                
-                
-                let uri_station = res.results.bindings[0][res.head.vars[0]]['value'];
-                
-                endpoint.query(Query_slices_byStation(uri_station)).done(function(json) { 
-                    console.log("new data = ", uri_station, json)
-                    
-                    
-                });
-                
-            } 
-            
-            
-          /*
-            json: the raw data from the query
-            suffix: whether the chart will show data per month, day, or hour
-            value: the value that launched the query 
-            insee (optional): the code INSEE of the region to which the data belongs
-            */
-            function onSuccessMember4(json, insee) {
-                
-                
-                let margin = {left: 70, right: 20, bottom: 20, top: 80}
-                let width = 600, height = 300
-                
-                var svgChart = d3.select("svg#line-chart-hour1")
-                console.log(svgChart)
-                
-                svgChart.selectAll('g').remove()
-                
-                svgChart.attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.bottom + margin.top)
-                .append("g")
-                
-                let newdata = []
-                let data = json.results.bindings
-                
-                
-                for (let i = 0; i < data.length; i++) {
-                    newdata.push({
-                        date: data[i]['date'].value,
-                        station: data[i]['Nstation'].value,
-                        temp_avg: data[i]['temp_avg'].value,
-                        region: data[i]['label'].value
-                    })
-                    
-                }
-                
-                console.log("Region", newdata[0].region)
-                var region = newdata[0].region
+                // Update axis and circle position
+                d3.select('g#line-chart-hour1').transition().duration(2000).call(d3.axisBottom(scales["line-chart-hour1"].x))
 
-                var sumstat = d3.nest()
-                                .key(d => d.station)
-                                .entries(newdata);
-                
-                
-                var StationName = sumstat.map(function(d) {return d.key}) 
-                console.log(StationName)
-                //console.log("time = ", d3.extent(newdata, d => new Date(d.date)))
-                var x = d3.scaleTime()
-                           .domain(d3.extent(newdata, d => new Date(d.date)))
-                
-                x.range([0, width ])
-                
-                //var xAxis = d3.axisBottom(x).ticks(20)
-                
-               /* var xAxis = svgChart.append("g")
-                        .attr("transform", `translate(${margin.left}, ${height})`)
-                        .call(d3.axisBottom(x).ticks(20));*/
-
-                //var xAxis = d3.axisBottom(x).ticks(20)
-
-                var xAxis = svgChart.append("g")
-                                    .attr('id', 'line-chart-hour1') /// je le donne un id pour séléctionner ce groupe lors de la transition
-                                    .attr("transform", `translate(${margin.left}, ${height})`)
-                                    .call(d3.axisBottom(x));
-                
-                
-                // Add Y axis
-                
-                var y = d3.scaleLinear()
-                          .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp_avg) }))
-                          .range([height, 0 ]);
-                
-                yAxis = d3.axisLeft()
-                           .scale(y)
-                
-                
-                var year = new Date(newdata[0].date).getYear();
-                
-                svgChart.append("g")
-                    .attr("transform", `translate(${margin.left}, 0)`)
-                    .call(yAxis)
-                
-                svgChart.append("text")
-                    .attr("transform", "translate(30,200)rotate(-90)")
-                    .text("Temperature");
-                
-                var brush = d3.brushX()                 // Add the brush feature using the d3.brush function
-                            .extent( [ [0,0], [width,height] ] ) // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
-                            .on("end", updateChart) // Each time the brush selection changes, trigger the 'updateChart'
-                                                
-                var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6]) 
-                
-                let lineGroup = svgChart.selectAll('g.lineGroup') 
-                                        .data(sumstat)
-                                        .enter()
-                                        .append('g')
-                                        .attr('class', 'lineGroup')
-                                        .attr('transform', `translate(${margin.left}, 0)`)
-                
-                
-                lineGroup.append("path")
-                        .attr("fill", "none") //.attr("fill", d => color(d.key))
-                        .style('fill-opacity', 0.1)
-                        .attr("stroke", d=> color(d.key))
-                        .attr("stroke-width", 1.5)
-                        .attr("d", function(d){
-                            console.log("data", d)
+                d3.select('svg#line-chart-hour1')
+                    .selectAll('g.lineGroup')
+                    .selectAll("path")
+                    .transition().duration(2000)
+                    .attr("clip-path", "url(#clip)")
+                    .attr("d", function(d){
                             return d3.line()
-                            .curve(d3.curveCardinal)
-                            .x(function(d) { return x(new Date(d.date))})
-                            // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
-                            //.y0( height )
-                            .y(function(d) { return y(parseFloat(d.temp_avg)); })
-                            (d.values)
+                                .curve(d3.curveCardinal)
+                                .x(function(d) { return scales["line-chart-hour1"].x(new Date(d.date))})
+                                .y(function(d) { return scales["line-chart-hour1"].y(parseFloat(d.temp_avg)); })
+                                (d.values)
                         })
-                        .on('mouseover', function(d) {
-                            console.log("data----here", d.key);
-                            var mouse = d3.mouse(this);
-                            var station = d.key;
-                            console.log(d3.event)
-                            console.log('mouse = ', mouse)
-                            
-                            var tooltip = d3.select(".chart-tooltip")
-                            
-                            tooltip.style('display', 'block')  
-                            .style('left', d3.event.pageX + 'px')
-                            .style('top', d3.event.pageY + 'px')
-                            
-                            var xDate = x.invert(mouse[0])
-                            var yTemp = y.invert(mouse[1]).toFixed(3)
-                            console.log("Temp----here", yTemp);
-                            console.log("Date----here", xDate);
-                            tooltip.html("<b> Station: </b>"+ station + "</br>" + "<b>  Date:</b> " + xDate.toISOString().split('T')[0] +  "</br>" + "<b> Daily Avg. Temp.:</b> " + yTemp);
-                            
-                            
 
-                            function doesChartExist() {
-                                return new Promise( (fulfill, reject) => {
-                                    // comparer donnée survol et donnée ligne
-                                    if (d3.select("#line-chart-hour2").selectAll('path.line').size() > 0) {
-                                        let oldData = d3.select("#line-chart-hour2").select('path.line').datum()
-                                        let oldStation =  d3.select("svg#chart-legend-hour2").select('text').node().innerHTML;
-
-                                        console.log('old station = ', oldStation)
-                                        console.log('old data = ', oldData)
-                                        console.log('new data =', station, xDate.toISOString().split('T')[0] , oldData[0].date.split('T')[0])
-
-                                        if (oldStation != station)
-                                            fulfill(false)
-
-                                        if (xDate.toISOString().split('T')[0] != oldData[0].date.split('T')[0])
-                                            fulfill(false)
-                                        
-                                        fulfill(true)
-                                    } else fulfill(false)
-                                })
-                            }
-                            
-                            doesChartExist().then((value) => {
-                                console.log("resultat de la promise = ", value)
-                                if (value) return;
-                                endpoint.query(QueryObservationsByDate(insee, xDate.toISOString().split('T')[0]))
-                                    .done((json) => onSuccessMember3HourlyTemp(json));
-                            })
-
-                        })
-                        
-                        
-                    lineGroup.append("g")
-                            .attr("class", "brush")
-                            .call(brush);
-                    
-                    var clipPath = lineGroup.append("defs")
-                            .append("clipPath")
-                            .attr("id", "clip")
-                            .append("rect")
-                            .attr("width", width)
-                            .attr("height", height);
-// 
-                    var idleTimeout
-                    function idled() { idleTimeout = null; }
-
-                        // A function that update the chart for given boundaries
-                    function updateChart() {
-
-                            extent = d3.event.selection
-
-                            // If no selection, back to initial coordinate. Otherwise, update X axis domain
-                            if(!extent){
-
-                                if (!idleTimeout) return idleTimeout = setTimeout(idled, 350);
-                                             // This allows to wait a little bit
-                                            
-                            }
-                            else
-                            {
-                                    
-                                    x.domain([+x.invert(extent[0]), +x.invert(extent[1])])
-                                    lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
-                                    
-
-                            }
-                            
-                            
-                            // Update axis and circle position
-
-                            xAxis.transition().duration(500).call(d3.axisBottom(x))
-                            lineGroup.selectAll("path")
-                                    .transition().duration(1000)
-                                    .attr("clip-path", "url(#clip)")
-                                    .attr("d", function(d){
-                                            console.log("data brush", d)
-                                            return d3.line()
-                                            .curve(d3.curveCardinal)
-                                            .x(function(d) { return x(new Date(d.date))})
-                                            .y(function(d) { return y(parseFloat(d.temp_avg)); })
-                                            (d.values)
-                                        })
-
-                        
-        
-                    }
-                //var tooltip = addTooltip();
-                var bisectDate = d3.bisector(d => d.date).left;
-                
-                // add SVG legend             
-                var svglegend = d3.select("svg#chart-legend-hour1");
-                
-                let legendGroup = svglegend.selectAll('g').remove()
-                    .data(StationName)
-                    .enter()
-                    .append('g')
-                
-                
-                legendGroup.append('line')
-                    .style("stroke", d => color(d))
-                    .style("stroke-width", 3)
-                    .attr("x1", 0)
-                    .attr("y1", (d,i) => 10 + i * 15)
-                    .attr("x2", 30)
-                    .attr("y2", (d,i) => 10 + i * 15);
-                
-                legendGroup.append('text')
-                    .attr('x', 40)
-                    .attr('y', (d,i) => 10 + i * 17)
-                    .style('font-size', '11px')
-                    .text(d => d)
-                
-                
-                //append title
-                
-                legendGroup.append("text")
-                    .attr("x", 350)             
-                    .attr("y", 20)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "14px")
-                    .text("Daily Average Air Temperature (Region: " + newdata[0].region + ")" );    
-                
             }
+
+        }
+
+        function drawLegend(StationName, region, id) {
             
-            function onSuccessMember3HourlyTemp (json)
-            {
-                
-                console.log("3Hourly Temperature", json)
-                
-                let margin = {left: 70, right: 20, bottom: 20, top: 80}
-                let width = 600, height = 300
-                
-                var svgChart = d3.select("svg#line-chart-hour2")
-                // console.log(svgChart)
-                
-                svgChart.selectAll('g').remove()
-                
-                //svgChart.selectAll("path.line").remove()
-                
-                //d3.select("svg#chart-legend-hour2").selectAll('text').remove()
-                
-                // svgChart.selectAll("path.line").datum()
+            d3.select("svg#" + id).selectAll('text').remove()
 
-                
-                svgChart.attr('width', width + margin.left + margin.right)
-                        .attr('height', height + margin.bottom + margin.top)
-                        .append("g")
-                
-                let newdata = []
-                let data = json.results.bindings
-                
-                
-                for (let i = 0; i < data.length; i++) {
-                    newdata.push({
-                        date: data[i]['t'].value,
-                        temp: data[i]['temp'].value,
-                        station: data[i]['station'].value,
-                        region: data[i]['region'].value
-                    })
-                    
-                }
-                
-                var sumstat = d3.nest()
-                                .key(d => d.station)
-                                .entries(newdata);
-
-                var StationName = sumstat.map(function(d) {return d.key}) 
-                console.log(StationName)
-
-                console.log("sumstat--- 3Hours", sumstat)
-                
-                var x = d3.scaleTime()
-                            .domain(d3.extent(newdata, d => new Date(d.date)))
-                            .range([ 0, width ])
-                
-
-                xAxis = d3.axisBottom()
-                          .scale(x)
-                
-                svgChart.append("g")
-                    .attr("transform", `translate(${margin.left}, ${height})`)
-                    .call(xAxis);
-                
-
-
-                // Add Y axis
-                
-                var y = d3.scaleLinear()
-                    .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp) }))
-                    .range([height,0 ]);
-                
-                yAxis = d3.axisLeft()
-                        .scale(y)
-                
-                svgChart.append("g")
-                    .attr("transform", `translate(${margin.left}, 0)`)
-                    .call(yAxis)
-                    
-                svgChart.append("text")
-                    .attr("transform", "translate(30,200)rotate(-90)")
-                    .text("Temperature");
-
-                var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6])
-
-                let lineGroup = svgChart.selectAll('g.lineGroup') 
-                                        .data(sumstat)
-                                        .enter()
-                                        .append('g')
-                                        .attr('class', 'lineGroup')
-                                        .attr('transform', `translate(${margin.left}, 0)`)
-                                        
-                
-                lineGroup.append("path")
-                        .attr("fill", "none") //.attr("fill", d => color(d.key))
-                        .style('fill-opacity', 0.1)
-                        .attr("stroke", d=> color(d.key))
-                        .attr("stroke-width", 1.5)
-                        .attr("d", function(d){
-                            //console.log("data", d)
-                            return d3.line()
-                            .curve(d3.curveCardinal)
-                            .x(function(d) { return x(new Date(d.date))})
-                            // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
-                            //.y0( height )
-                            .y(function(d) { return y(parseFloat(d.temp)); })
-                            (d.values)
-                        })
-
-                var svglegend = d3.select("svg#chart-legend-hour2");
-                
-                let legendGroup = svglegend.selectAll('g').remove()
-                    .data(StationName)
-                    .enter()
-                    .append('g')
-                
-                
-                legendGroup.append('line')
-                    .style("stroke", d => color(d))
-                    .style("stroke-width", 3)
-                    .attr("x1", 0)
-                    .attr("y1", (d,i) => 10 + i * 15)
-                    .attr("x2", 30)
-                    .attr("y2", (d,i) => 10 + i * 15);
-                
-                legendGroup.append('text')
-                    .attr('x', 40)
-                    .attr('y', (d,i) => 10 + i * 17)
-                    .style('font-size', '11px')
-                    .text(d => d)
-                
-                
-                //append title
-                
-                legendGroup.append("text")
-                    .attr("x", 350)             
-                    .attr("y", 20)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "14px")
-                    .text("Daily Average Air Temperature (Region: " + newdata[0].region + ")" );    
-                
-            // Vertical Mouse 
-           /* var mouseG = svgChart.append("g")
-                    .attr("class", "mouse-over-effects");
-
-            mouseG.append("path") // this is the black vertical line to follow mouse
-                        .attr("class", "mouse-line")
-                        .style("stroke", "black")
-                        .style("stroke-width", "1px")
-                        .style("opacity", "0");    
-
-            var lines = document.getElementsByClassName('line');
-
-            var mousePerLine = mouseG.selectAll('.mouse-per-line')
-                                    .data(sumstat)
+            // add SVG legend             
+            var svglegend = d3.select("svg#" + id);
+            
+            svglegend.selectAll('g').remove()
+                                    
+            let legendGroup = svglegend.selectAll('g').data(StationName)
                                     .enter()
-                                    .append("g")
-                                    .attr("class", "mouse-per-line");
-
-            mousePerLine.append("circle")
-                .attr("r", 7)
-                .style("stroke", d=> color(d.key))
-                .style("fill", "none")
-                .style("stroke-width", "1px")
-                .style("opacity", "0");         
-                                
-            mousePerLine.append("text")
-                .attr("transform", "translate(10,3)");
-
-        mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
-            .attr('width', width) // can't catch mouse events on a g element
-            .attr('height', height)
-            .attr('fill', 'none')
-            .attr('pointer-events', 'all')
-            .on('mouseout', function() { // on mouse out hide line, circles and text
-                d3.select(".mouse-line")
-                .style("opacity", "0");
-                d3.selectAll(".mouse-per-line circle")
-                .style("opacity", "0");
-                d3.selectAll(".mouse-per-line text")
-                .style("opacity", "0");
-            })
-            .on('mouseover', function() { // on mouse in show line, circles and text
-                d3.select(".mouse-line")
-                .style("opacity", "1");
-                d3.selectAll(".mouse-per-line circle")
-                .style("opacity", "1");
-                d3.selectAll(".mouse-per-line text")
-                .style("opacity", "1");
-            })
-                /* var line = d3.line()
-                    .curve(d3.curveCardinal)
-                    .x(function(d) { return x(new Date(d.date)); })
-                    .y(function(d) { return y(parseFloat(d.temp)); });  
-                
-                // console.log("line", line)
-                
-                 var lines = svgChart.selectAll("lines")
-                .data(sumstat)
-                .enter()
-                .append("g");
-             
-                
-                
-               /* svgChart.append("path")
-                    .datum(newdata)
-                    .attr("class", "line")
-                    .attr("d", function(d) { return line(d); })
-                    .attr("fill", "none") //.attr("fill", d => color(d.key))
-                    .style('fill-opacity', 0.1)
-                    .attr("stroke", "#ed3700");
-
-                // draw legend
-
-                var svglegend = d3.select("svg#chart-legend-hour2");
-                svglegend.append("text")
-                    .attr("x", '50%')             
-                    .attr("y", 20)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "14px")
-                    .text(station);
-                
-                
-                 let line = svgChart.selectAll('g.line') 
-                .data(sumstat)
-                .enter()
-                .append('g')
-                .attr('class', 'line')
-                .attr('transform', `translate(${margin.left}, 0)`)
-                
-                
-                line.append("path")
-                .attr("fill", "none") //.attr("fill", d => color(d.key))
-                .style('fill-opacity', 0.1)
-                .attr("stroke-width", 1.5)
-                .attr("d", function(d){
-                    console.log("data", d)
-                    return d3.line()
-                    .curve(d3.curveCardinal)
-                    .x(function(d) { return x(new Date(d.date))})
-                    .y(function(d) { return y(parseFloat(d.temp)); })
-                    (d.values)
-                })
-                */
-                
-            }
+                                    .append('g')
             
-            
-            
-            
-            
-            
-            
-            /*      lineGroup.selectAll('circle')
-            .data(d => d.values)
-            .enter()
-            .append('circle')
-            .attr('cx', d => suffix === 'date' ? x(new Date(d.time)) : x(d.time))
-            .attr('cy', d => y(parseFloat(d.value)))
-            .attr('r', 3)
-            .attr('stroke', d => color(d.name))
-            .attr('fill', 'white')
-            .on('click', d => {
-                switch(suffix) {
-                    case 'month': // query data per day for a particular month
-                    endpoint.query(build_queryByMonth(d.time, insee)).done(function(json) { onSuccessMember3(json, 'date', d.time, insee)});
-                    break;
-                    
-                    case 'date': // query data per hour for a particular day
-                    endpoint.query(buildQuery_slices(d.time, insee)).done(function(json) { onSuccessMember3(json, 'hour', d.time, insee)});
-                    break;
-                }
-                
-            })
-            
-            */
-            
-            
-            
-            
-            
-            function onSuccessMember3(json, suffix, value) {
-                
-                let data = json.results.bindings
-                let insee = arguments.length > 3 ? arguments[3] : value
-                
-                
-                
-                let margin = {left: 20, right: 20, bottom: 20, top: 80}
-                let width = 600, height = 300
-                
-                var svgChart = d3.select("svg#line-chart-" + suffix)
-                
-                svgChart.selectAll('g').remove()
-                
-                svgChart.attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.bottom + margin.top)
-                .append("g")
-                
-                console.log("data", json.results.bindings)
-                
-                
-                
-                // data preparation for d3
-                let newdata = []
-                
-                for (let i = 0; i < data.length; i++) {
-                    
-                    for (let key of ["max_temp", "avg_temp", "min_temp", ]) {
-                        newdata.push({
-                            time: data[i][suffix].value,
-                            name: key,
-                            value: data[i][key].value
-                            
-                        })
-                    }
-                }
-                
-                console.log("newdata", newdata)
-                var sumstat = d3.nest()
-                .key(function(d) { return d.name;})
-                .entries(newdata)
-                console.log("groupeddata", sumstat)
-                
-                var x;
-                if (suffix == "month") {
-                    // Add X axis --> it is a date format
-                    x = d3.scaleLinear()
-                    .domain(d3.extent(newdata, function(d) { return +d.time; }))
-                } else if (suffix == "date") {
-                    console.log("time = ", d3.extent(newdata, d => new Date(d.time)))
-                    x = d3.scaleTime()
-                    .domain(d3.extent(newdata, d => new Date(d.time)))
-                }
-                
-                x.range([ 0, width ])
-                
-                svgChart.append("g")
-                .attr("transform", `translate(${margin.left}, ${height})`)
-                .call(d3.axisBottom(x).ticks(12));
-                
-                // Add Y axis
-                var y = d3.scaleLinear()
-                .domain(d3.extent(newdata, function(d) { return parseFloat(d.value) }))
-                .range([ height, 0 ]);
-                
-                svgChart.append("g")
-                .attr("transform", `translate(${margin.left}, 0)`)
-                .call(d3.axisLeft(y));
-                
-                
-                // color palette
-                var res = sumstat.map(function(d){ return d.key }) // list of group names
-                var color = d3.scaleOrdinal()
-                .domain(res)
-                .range(['#ff0000','#32cd32','#0000cd'])
-                
-                
-                let lineGroup = svgChart.selectAll('g.lineGroup') 
-                .data(sumstat)
-                .enter()
-                .append('g')
-                .attr('class', 'lineGroup')
-                .attr('transform', `translate(${margin.left}, 0)`)
-                
-                
-                lineGroup.append("path")
-                .attr("fill", d => color(d.key))
-                .style('fill-opacity', 0.1)
-                .attr("stroke", function(d){ return color(d.key) })
-                .attr("stroke-width", 1.5)
-                .attr("d", function(d){
-                    return d3.area()
-                    .curve(d3.curveCardinal)
-                    .x(function(d) { return suffix === 'date' ? x(new Date(d.time)) : x(d.time); })
-                    // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
-                    .y0( height )
-                    .y1(function(d) { return y(parseFloat(d.value)); })
-                    (d.values)
-                })   
-                .on("mouseover", function (d) {                                  
-                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
-                    .style("stroke-width",'3px');
-                    var selectthegraphs = $('.g.lineGroup').not(this);     //select all the rest of the lines, except the one you are hovering on and drop their opacity
-                    d3.selectAll(selectthegraphs)
-                    .style("opacity",0.2);
-                })
-                .on("mouseout", function (d) {                                  
-                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
-                    .style("stroke-width",'1.5px');
-                    
-                })
-                
-                // create tooltip 
-                
-                
-                
-                // show points as circles 
-                
-                lineGroup.selectAll('circle')
-                .data(d => d.values)
-                .enter()
-                .append('circle')
-                .attr('cx', d => suffix === 'date' ? x(new Date(d.time)) : x(d.time))
-                .attr('cy', d => y(parseFloat(d.value)))
-                .attr('r', 3)
-                .attr('stroke', d => color(d.name))
-                .attr('fill', 'white')
-                .on('click', d => {
-                    switch(suffix) {
-                        case 'month': // query data per day for a particular month
-                        endpoint.query(build_queryByMonth(d.time, insee)).done(function(json) { onSuccessMember3(json, 'date', d.time, insee)});
-                        break;
-                        
-                        case 'date': // query data per hour for a particular day
-                        endpoint.query(buildQuery_slices(d.time, insee)).done(function(json) { onSuccessMember3(json, 'hour', d.time, insee)});
-                        break;
-                    }
-                    
-                })
-                .on("mouseover", function(event) { 
-                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
-                    .style("stroke-width",'3px');
-                    tooltip.style("display", null);
-                    d3.select('#tooltip-date')
-                    .text("d => d.time");
-                    d3.select('#tooltip-close')
-                    .text("d => d.value ");
-                })
-                .on("mouseout", function(event) {
-                    tooltip.style("display", "none");
-                })
-                
-                /*.on("mouseover", function (d) {                                  
-                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
-                    .style("stroke-width",'3px');
-                    
-                    var selectthegraphs = $('.g.lineGroup').not(this);     //select all the rest of the lines, except the one you are hovering on and drop their opacity
-                    d3.selectAll(selectthegraphs)
-                    .style("opacity",0.2);
-                })
-                .on("mouseout", function (d) {                                  
-                    d3.select(this)                          //on mouseover of each line, give it a nice thick stroke
-                    .style("stroke-width",'1.5px');
-                    
-                })*/
-                
-                
-                //var selectthegraphs = $('.thegraph').not(this);     //select all the rest of the lines, except the one you are hovering on and drop their opacity
-                //d3.selectAll(selectthegraphs)
-                //.style("opacity",0.2);
-                
-                //var getname = document.getElementById(d.name);    //use get element cause the ID names have spaces in them
-                //var selectlegend = $('.legend').not(getname);    //grab all the legend items that match the line you are on, except the one you are hovering on
-                
-                //d3.selectAll(selectlegend)    // drop opacity on other legend names
-                //.style("opacity",.2);
-                
-                //d3.select(getname)
-                //  .attr("class", "legend-select");  //change the class on the legend name that corresponds to hovered line to be bolder        	
-                //})
-                ////////////////// chart legend 
-                
-                
-                let svgLegend = d3.select('svg#chart-legend-' + suffix)
-                
-                
-                console.log('insee', insee)
-                svgLegend.append('text')
-                .attr('x', 350)
-                .attr('y', (d,i) => 10 + i * 17)
-                .style('font-size', '11px')
-                .attr("text-anchor", "middle")
-                .style("fill", "#5a5a5a")
-                .style("font-family", "Raleway")
-                .style("font-weight", "300")
-                .style("font-size", "18px")
-                
-                console.log("res = ", res)
-                
-                let legendGroup = svgLegend.selectAll('g')
-                .data(res)
-                .enter()
-                .append('g')
-                
-                legendGroup.append('line')
+            legendGroup.append('line')
                 .style("stroke", d => color(d))
                 .style("stroke-width", 3)
                 .attr("x1", 0)
                 .attr("y1", (d,i) => 10 + i * 15)
                 .attr("x2", 30)
                 .attr("y2", (d,i) => 10 + i * 15);
-                
-                legendGroup.append('text')
+            
+            legendGroup.append('text')
                 .attr('x', 40)
                 .attr('y', (d,i) => 10 + i * 17)
                 .style('font-size', '11px')
                 .text(d => d)
-                
-            }
             
-            map.on("viewreset", reset);
-            
-            reset();
-           
-        
-            // fit the SVG element to leaflet's map layer
-            function reset() {
-                bounds = path.bounds(geoShape[0]);
-                
-                var topLeft = bounds[0],
-                bottomRight = bounds[1];
-                
-                svg.attr("width", bottomRight[0] - topLeft[0])
-                .attr("height", bottomRight[1] - topLeft[1])
-                .style("left", topLeft[0] + "px")
-                .style("top", topLeft[1] + "px");
-                
-                g .attr("transform", "translate(" + -topLeft[0] + "," 
-                + -topLeft[1] + ")");
-                
-                // initialize the path data	
-                d3_features.attr("d", path)
-                .style("fill-opacity", 0.2);
-                //.attr('fill','blue');
-            } 
-            
-            // Use Leaflet to implement a D3 geometric transformation.
-            function projectPoint(x, y) {
-                var point = map.latLngToLayerPoint(new L.LatLng(y, x));
-                this.stream.point(point.x, point.y);
-            }
-            
-        })
-        
-        
-        
-        
-        function buildQuery_stations(insee) {
-            var queryStations = `PREFIX dct: <http://purl.org/dc/terms/>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-            PREFIX geosparql:  <http://www.opengis.net/ont/geosparql#> 
-            SELECT distinct * WHERE {
-                ?station rdfs:label ?stationName; dct:spatial [ wdt:P131 [rdfs:label ?label ; wdt:P2585 '`+ insee +`']];  geo:lat ?lat; geo:long ?long .
-            }
-            `
-            return queryStations
-            
-        }
-        
-        function QueryObservationsByStation_Date(station, date) {
-            var query = `
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            PREFIX sosa: <http://www.w3.org/ns/sosa/>
-            PREFIX wep: <http://ns.inria.fr/meteo/ontology/property/>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-            PREFIX wevp: <http://ns.inria.fr/meteo/vocab/weatherproperty/> 
-            
-            SELECT ?t  ((?v - 273.15) as ?temp) ?station WHERE 
-            {
-                VALUES ?station  {"`+ station +`" }  
-                VALUES ?date { "`+ date +`"}  
-                ?obs a  weo:MeteorologicalObservation; 
-                sosa:observedProperty wevp:airTemperature ;
-                sosa:hasSimpleResult  ?v; 
-                wep:madeByStation ?s ;
-                sosa:resultTime ?t . 
-                ?s rdfs:label ?station .
-                
-                #FILTER(xsd:date(?t) <= xsd:date(?date))
-                FILTER(xsd:date(?t) >= xsd:date(?jourPrecedent))
-                BIND ( bif:dateadd('day', -1, xsd:date(?date)) as ?jourPrecedent)
-                BIND ( bif:dateadd('day', 1, xsd:date(?date)) as ?jourSuivant)
-                FILTER(xsd:date(?t) <= ?jourSuivant)
-                
-            } 
-            ORDER BY ?t
-            
-            `
-            return query
-            
-            
+            legendGroup.append("text")
+                .attr("x", 350)             
+                .attr("y", 20)
+                .attr("text-anchor", "middle")
+                .style("font-size", "14px")
+                .text("Daily Average Air Temperature (Region: " + region + ")" );    
         }
 
-        function QueryObservationsByDate(insee, date) {
-            var query = `
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            PREFIX sosa: <http://www.w3.org/ns/sosa/>
-            PREFIX wep: <http://ns.inria.fr/meteo/ontology/property/>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-            PREFIX wevp: <http://ns.inria.fr/meteo/vocab/weatherproperty/> 
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        function drawLineChart(newdata, id, insee) {
+            let margin = {left: 40, right: 20, bottom: 20, top: 0}
+            var svgChart = d3.select(`svg#${id}`)
+
+            let width = svgChart.node().parentNode.clientWidth,
+                height = svgChart.node().parentNode.clientHeight;
+
+            if (id != "brush-chart") height -= 80;
+
+            console.log(width, height)
             
-            SELECT  distinct ?t  ((?v - 273.15) as ?temp) ?station ?region WHERE 
-            {
-                VALUES ?insee { '`+ insee +`'}  
-                VALUES ?date { "`+ date +`"}  
-                ?obs a  weo:MeteorologicalObservation; 
-                sosa:observedProperty wevp:airTemperature ;
-                sosa:hasSimpleResult  ?v; 
-                wep:madeByStation ?s ;
-                sosa:resultTime ?t . 
-                ?s rdfs:label ?station .
-                ?s a weo:WeatherStation ; dct:spatial ?e.                                
-                ?e wdt:P131 ?item .
-                ?item rdfs:label ?region ;  wdt:P2585  ?insee .
+            svgChart.selectAll('g').remove()
+            
+            svgChart.attr('width', width)
+                .attr('height', height)
+                .append("g")
+                .attr("transform", "translate("+ margin.left + "," + margin.top + ")" )
+            
+            console.log("Region", newdata[0].region)
+            var region = newdata[0].region
+
+            var sumstat = d3.nest()
+                .key(d => d.station)
+                .entries(newdata);
+            
+            scales[id].x.domain(d3.extent(newdata, d => new Date(d.date))).range([0, width ])
+            
+            var xAxis = svgChart.append("g")
+                    .attr('id', id) /// je le donne un id pour séléctionner ce groupe lors de la transition
+                    .attr("transform", `translate(${margin.left}, ${height - margin.bottom})`)
+                    .call(d3.axisBottom(scales[id].x));
+            
+            // Add Y axis
+            
+            scales[id].y.domain(d3.extent(newdata, function(d) { return parseFloat(d.temp_avg) }))
+                        .range([height - margin.bottom, 0 ]);
+            
+            yAxis = d3.axisLeft().scale(scales[id].y)
+
+            if (id == "brush-chart") yAxis.ticks(0)
+            
+            var year = new Date(newdata[0].date).getYear();
+            
+            
+                svgChart.append("g")
+                    .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                    .call(yAxis)
+            
+            svgChart.append("text")
+                .attr("transform", "translate(15,200)rotate(-90)")
+                .text("Temperature");
+
+            let lineGroup = svgChart.selectAll('g.lineGroup') 
+                .data(sumstat)
+                .enter()
+                .append('g')
+                .attr('class', 'lineGroup')
+                .attr('transform', `translate(${margin.left}, 0)`)
+            
+            lineGroup.append("path")
+                .attr("fill", "none") //.attr("fill", d => color(d.key))
+                .style('fill-opacity', 0.1)
+                .attr("stroke", d=> color(d.key))
+                .attr("stroke-width", 1.5)
+                .attr("d", function(d){
+                    return d3.line()
+                    .curve(d3.curveCardinal)
+                        .x(function(d) { return scales[id].x(new Date(d.date))})
+                        .y(function(d) { return scales[id].y(parseFloat(d.temp_avg)); })
+                        (d.values)
+                })
+                .on('mouseover', function(d) {
+                    if (this.parentNode.parentNode.id == 'brush-chart') return;
+
+                    // console.log("data----here", d.key);
+                    var mouse = d3.mouse(this);
+                    var station = d.key;
+                    // console.log(d3.event)
+                    // console.log('mouse = ', mouse)
+                    
+                    var tooltip = d3.select(".chart-tooltip")
+                    
+                    tooltip.style('display', 'block')  
+                    .style('left', d3.event.pageX + 'px')
+                    .style('top', d3.event.pageY + 'px')
+                    
+                    var xDate = scales[id].x.invert(mouse[0])
+                    var yTemp = scales[id].y.invert(mouse[1]).toFixed(3)
+                    // console.log("Temp----here", yTemp);
+                    // console.log("Date----here", xDate);
+                    tooltip.html("<b> Station: </b>"+ station + "</br>" + "<b>  Date:</b> " + xDate.toISOString().split('T')[0] +  "</br>" + "<b> Daily Avg. Temp.:</b> " + yTemp);
+                    
                 
-                #FILTER(xsd:date(?t) <= xsd:date(?date))
-                FILTER(xsd:date(?t) >= xsd:date(?jourPrecedent))
-                BIND ( bif:dateadd('day', -1, xsd:date(?date)) as ?jourPrecedent)
-                BIND ( bif:dateadd('day', 1, xsd:date(?date)) as ?jourSuivant)
-                FILTER(xsd:date(?t) <= ?jourSuivant)
-                
-            } 
-            ORDER BY ?t
-            
-            `
-            return query
-            
-            
+                    function doesChartExist() {
+                        return new Promise( (fulfill, reject) => {
+                            // comparer donnée survol et donnée ligne
+                            if (d3.select("#line-chart-hour2").selectAll('path.line').size() > 0) {
+                                let oldData = d3.select("#line-chart-hour2").select('path.line').datum()
+                                let oldStation =  d3.select("svg#chart-legend-hour2").select('text').node().innerHTML;
+
+                                // console.log('old station = ', oldStation)
+                                // console.log('old data = ', oldData)
+                                // console.log('new data =', station, xDate.toISOString().split('T')[0] , oldData[0].date.split('T')[0])
+
+                                if (oldStation != station)
+                                    fulfill(false)
+
+                                if (xDate.toISOString().split('T')[0] != oldData[0].date.split('T')[0])
+                                    fulfill(false)
+                                
+                                fulfill(true)
+                            } else fulfill(false)
+                        })
+                    }
+                    
+                    doesChartExist().then((value) => {
+                        // console.log("resultat de la promise = ", value)
+                        if (value) return;
+                        endpoint.query(QueryObservationsByDate(insee, xDate.toISOString().split('T')[0]))
+                            .done((json) => {
+
+                                // legend exists
+                                if (d3.select('svg#chart-legend-hour2').selectAll('g').empty()) {
+                                    drawLegend(json.results.bindings.map(d => d.station.value), insee, "chart-legend-hour2")
+                                } else {
+                                    // change title
+                                }
+
+                                onSuccessMember3HourlyTemp(json)
+
+                            } );
+                    })
+
+                })
         }
         
-        function buildQuery_slices(insee) {
-            console.log('code = ', insee)
-            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
-            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            PREFIX qb:  <http://purl.org/linked-data/cube#>
-            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
-            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
-            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX dct: <http://purl.org/dc/terms/>
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-            
-            SELECT ?month (AVG(?temp_avg) as ?avg_temp)  (AVG(?temp_min) as ?min_temp) (AVG(?temp_max) as ?max_temp) ?label WHERE
-            {
-                VALUES ?insee  {'`+ insee +`' } 
-                ?s  a qb:Slice ;
-                wes-dimension:station ?station ;
-                wes-dimension:year "2021"^^xsd:gYear ;
-                qb:observation [
-                a qb:Observation ;
-                wes-attribute:observationDate ?date ;
-                wes-measure:avgDailyTemperature ?temp_avg; 
-                wes-measure:minDailyTemperature ?temp_min; 
-                wes-measure:maxDailyTemperature ?temp_max] .
-                
-                ?station a weo:WeatherStation ; dct:spatial ?e.                                
-                ?e wdt:P131 ?item .
-                ?item rdfs:label ?label ; wdt:P2585  ?insee .
-                BIND(MONTH(?date) as ?month)
-            }
-            GROUP BY ?month ?label
-            ORDER BY ?month
-            `
-            return query
-            
-        }
+   
         
-        function buildQuery_slices1(insee) {
-            console.log('code = ', insee)
-            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
-            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            PREFIX qb:  <http://purl.org/linked-data/cube#>
-            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
-            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
-            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX dct: <http://purl.org/dc/terms/>
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-            
-            SELECT distinct ?date ?Nstation ?temp_avg ?label ?insee WHERE
-            {
-                VALUES ?insee  {'`+ insee +`' } 
-                ?s  a qb:Slice ;
-                wes-dimension:station ?station ;
-                wes-dimension:year "2021"^^xsd:gYear ;
-                qb:observation [
-                a qb:Observation ;
-                wes-attribute:observationDate ?date ;
-                wes-measure:avgDailyTemperature ?temp_avg] .
-                
-                ?station a weo:WeatherStation ; dct:spatial ?e; rdfs:label ?Nstation.                            
-                ?e wdt:P131 ?item .
-                ?item rdfs:label ?label ; wdt:P2585  ?insee .
-                #BIND(month(?date) as ?month)
-            }
-            GROUP BY ?date ?Nstation ?label 
-            ORDER BY ?date
-            `
-            return query
-            
-        }
-        
-        function buildquery_closetStation(long,lat)
+        // function onSuccessLegend2
+
+        function onSuccessMember3HourlyTemp (json)
         {
-            var query = `
-            PREFIX geo:        <http://www.w3.org/2003/01/geo/wgs84_pos#> 
-            PREFIX geosparql:  <http://www.opengis.net/ont/geosparql#> 
-            PREFIX geof:       <http://www.opengis.net/def/function/geosparql/>  
-            PREFIX uom:        <http://www.opengis.net/def/uom/OGC/1.0/> 
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-            SELECT ?URI_station ?Name_Station ?lat ?long ?alt ?coordinates ?Region WHERE 
-            {
-                ?URI_station rdfs:label ?Name_Station ;
-                geosparql:hasGeometry [ geosparql:asWKT ?coordinates];
-                geo:lat ?lat; geo:long ?long ; geo:altitude ?alt ; dct:spatial ?e. 
-                ?e wdt:P131 ?Region .
-                
-                BIND("Point(`+ long +` `+ lat +`)"^^geosparql:wktLiteral as ?Currentposition)
-                BIND (geof:distance(?coordinates,?Currentposition , uom:metre) as ?distance)      
-            }
-            ORDER BY ?distance
-            LIMIT 1`
-            return query
-        }
-        function Query_slices_byStation(uri_station) {
-            var query = `
-            PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
-            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            PREFIX qb:  <http://purl.org/linked-data/cube#>
-            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
-            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
-            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX dct: <http://purl.org/dc/terms/>
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
             
-            SELECT distinct ?date ?Nstation ?temp_avg ?temp_min ?temp_max ?label WHERE
-            {
-                VALUES ?station {<`+ uri_station +`>}
-                VALUES ?year  {"2021"^^xsd:gYear }
-                ?s  a qb:Slice ;
-                wes-dimension:station ?station  ;
+            console.log("3Hourly Temperature", json)
+            
+            let margin = {left: 70, right: 20, bottom: 20, top: 80}
+            let width = 600, height = 300
+            
+            var svgChart = d3.select("svg#line-chart-hour2")
+            // console.log(svgChart)
+            
+            svgChart.selectAll('g').remove()
+    
+            
+            svgChart.attr('width', width + margin.left + margin.right)
+                    .attr('height', height + margin.bottom + margin.top)
+                    .append("g")
+            
+            let newdata = []
+            let data = json.results.bindings
+            
+            
+            for (let i = 0; i < data.length; i++) {
+                newdata.push({
+                    date: data[i]['t'].value,
+                    temp: data[i]['temp'].value,
+                    station: data[i]['station'].value,
+                    region: data[i]['region'].value
+                })
                 
-                wes-dimension:year ?year;
-                qb:observation [
-                a qb:Observation ;
-                wes-attribute:observationDate ?date ;
-                wes-measure:avgDailyTemperature ?temp_avg; 
-                wes-measure:minDailyTemperature ?temp_min; 
-                wes-measure:maxDailyTemperature ?temp_max] .
-                ?station a weo:WeatherStation ; rdfs:label ?Nstation .
-                #BIND(month(?date) as ?month)
             }
             
-            ORDER BY ?date
-            `
-            return query
+            var sumstat = d3.nest()
+                            .key(d => d.station)
+                            .entries(newdata);
+
+            var StationName = sumstat.map(function(d) {return d.key}) 
+            console.log(StationName)
+
+            console.log("sumstat--- 3Hours", sumstat)
+            
+            var x = d3.scaleTime()
+                        .domain(d3.extent(newdata, d => new Date(d.date)))
+                        .range([ 0, width ])
+            
+
+            xAxis = d3.axisBottom()
+                        .scale(x)
+            
+            svgChart.append("g")
+                .attr("transform", `translate(${margin.left}, ${height})`)
+                .call(xAxis);
+            
+
+
+            // Add Y axis
+            
+            var y = d3.scaleLinear()
+                .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp) }))
+                .range([height,0 ]);
+            
+            yAxis = d3.axisLeft()
+                    .scale(y)
+            
+            svgChart.append("g")
+                .attr("transform", `translate(${margin.left}, 0)`)
+                .call(yAxis)
+                
+            svgChart.append("text")
+                .attr("transform", "translate(30,200)rotate(-90)")
+                .text("Temperature");
+
+            var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6])
+
+            let lineGroup = svgChart.selectAll('g.lineGroup') 
+                                    .data(sumstat)
+                                    .enter()
+                                    .append('g')
+                                    .attr('class', 'lineGroup')
+                                    .attr('transform', `translate(${margin.left}, 0)`)
+                                    
+            
+            lineGroup.append("path")
+                    .attr("fill", "none") //.attr("fill", d => color(d.key))
+                    .style('fill-opacity', 0.1)
+                    .attr("stroke", d=> color(d.key))
+                    .attr("stroke-width", 1.5)
+                    .attr("d", function(d){
+                        //console.log("data", d)
+                        return d3.line()
+                        .curve(d3.curveCardinal)
+                        .x(function(d) { return x(new Date(d.date))})
+                        // .y(function(d) { return y(parseFloat(d.value)); }) // pour la ligne
+                        //.y0( height )
+                        .y(function(d) { return y(parseFloat(d.temp)); })
+                        (d.values)
+                    })
+
+           
             
         }
+    
         
-        function build_queryByMonth(month, insee)
-        {
-            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
-            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-            PREFIX qb: <http://purl.org/linked-data/cube#>
-            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
-            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
-            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX dct: <http://purl.org/dc/terms/>
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+        // fit the SVG element to leaflet's map layer
+        function reset() {
+            bounds = path.bounds(regions);
             
-            SELECT ?date (AVG(?temp_avg) as ?avg_temp) (AVG(?temp_min) as ?min_temp) (AVG(?temp_max) as ?max_temp) ?label WHERE
-            {
-                ?s a qb:Slice ;
-                wes-dimension:station ?station ;
-                wes-dimension:year "2021"^^xsd:gYear ;
-                qb:observation [
-                a qb:Observation ;
-                wes-attribute:observationDate ?date ;
-                wes-measure:avgDailyTemperature ?temp_avg; 
-                wes-measure:minDailyTemperature ?temp_min; 
-                wes-measure:maxDailyTemperature ?temp_max] .
-                
-                ?station a weo:WeatherStation ; dct:spatial ?e. 
-                ?e wdt:P131 ?item .
-                ?item rdfs:label ?label ; wdt:P2585 '`+ insee +`' .
-                BIND(MONTH(?date) as ?month)
-                FILTER (?month =`+ month +` )
-            }
-            GROUP BY ?date ?label
-            ORDER BY ?date`
+            var topLeft = bounds[0],
+            bottomRight = bounds[1];
             
-            return query
+            svg.attr("width", bottomRight[0] - topLeft[0])
+            .attr("height", bottomRight[1] - topLeft[1])
+            .style("left", topLeft[0] + "px")
+            .style("top", topLeft[1] + "px");
             
-        }
+            g .attr("transform", "translate(" + -topLeft[0] + "," 
+            + -topLeft[1] + ")");
+            
+            // initialize the path data	
+            d3_features.attr("d", path)
+            .style("fill-opacity", 0.2);
+            //.attr('fill','blue');
+        } 
         
+        // Use Leaflet to implement a D3 geometric transformation.
+        function projectPoint(x, y) {
+            var point = map.latLngToLayerPoint(new L.LatLng(y, x));
+            this.stream.point(point.x, point.y);
+        }
         
     </script>
 </body>
