@@ -190,7 +190,7 @@
 
         function drawBrush(id) {
 
-            var svgChart = d3.select(`svg#${id}`)
+            var svgChart = d3.select("svg#brush-chart")
 
             let width = svgChart.node().parentNode.clientWidth,
                 height = svgChart.node().parentNode.clientHeight;
@@ -198,25 +198,29 @@
             console.log(width, height)
 
             var brush = d3.brushX()                 // Add th e brush feature using the d3.brush function
-                        .extent([[0,0], [width - margin.left, height - margin.bottom] ] ) // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
+                        .extent([[0,0], [width - margin.left , height - margin.bottom] ] ) // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
                         .on("end", updateChart) // Each time the brush selection changes, trigger the 'updateChart'
                         //.on("brush", brushed)
 
+            //const defaultSelection = [scales["brush-chart"].x(d3.timeDay.offset(scales["brush-chart"].x.domain()[1], -1)),  scales["line-chart-hour1"].x.range()[1]];
+            //console.log ("defaultSelection:", defaultSelection)
             let lineGroup = svgChart
-                .select('g.lineGroup')
+                                .select('g.lineGroup')
 
-            lineGroup.append("g")
-                .attr("class", "brush")
-                .call(brush);
+            svgChart.select('g.lineGroup')
+                    .append("g")
+                    .attr("class", "brush")
+                    .call(brush)
+                //.call(brush.move, defaultSelection);
             
-            var clipPath = d3.select(`svg#line-chart-hour1`)
-                .selectAll('g.lineGroup').append("defs")
-                .append("clipPath")
-                .attr("id", "clip")
-                .append("rect")
-                .attr("width", width - margin.left)
-                .attr("height", height - margin.bottom);
-   
+            var clipPath = d3.select("line-chart-hour1")
+                            .selectAll('g.lineGroup').append("defs")
+                            .append("clipPath")
+                            .attr("id", "clip")
+                            .append("rect")
+                            .attr("width", width - margin.left )
+                            .attr("height", height - margin.bottom); 
+            
             var idleTimeout
             function idled() { idleTimeout = null; }
 
@@ -230,21 +234,23 @@
              // A function that update the chart for given boundaries
             function updateChart() {
 
-                extent = d3.brushSelection(this); //d3.event.selection
+                extent = d3.event.selection
                 // If no selection, back to initial coordinate. Otherwise, update X axis domain
                 if(!extent){
                     if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
                 }
                 else
                 {
-                    scales["line-chart-hour1"].x.domain([ scales["brush-chart"].x.invert(extent[0]), scales["brush-chart"].x.invert(extent[1])])
+                    scales["line-chart-hour1"].x.domain([scales["brush-chart"].x.invert(extent[0]), scales["brush-chart"].x.invert(extent[1])])
+                    console.log("scales" , scale)
+
                     // console.log("x.invert(extent[0]", x.invert(extent[0]))
                     // console.log("x.invert(extent[1]", x.invert(extent[1]))
-                    lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+                   // lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
                 }
                 
                 // Update axis and circle position
-                d3.select('g#line-chart-hour1').transition().duration(2000).call(d3.axisBottom(scales["line-chart-hour1"].x))
+                d3.select('line-chart-hour1').transition().duration(2000).call(d3.axisBottom(scales["line-chart-hour1"].x))
 
                 d3.select('svg#line-chart-hour1')
                     .selectAll('g.lineGroup')
@@ -297,7 +303,7 @@
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
-                .style("font-size", "14px")
+                .style("font-size", "12px")
                 .text("Air Temperature Per Station (Region: " + region + ")" ); 
             }
             else
@@ -306,7 +312,7 @@
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
-                .style("font-size", "14px")
+                .style("font-size", "12px")
                 .text("Daily Average Air Temperature Per Station (Region: " + region + ")" ); }
         }
 
@@ -336,7 +342,7 @@
                 .key(d => d.station)
                 .entries(newdata);
             
-            scales[id].x.domain(d3.extent(newdata, d => new Date(d.date))).range([0, width ])
+            scales[id].x.domain(d3.extent(newdata, d => new Date(d.date))).range([0, `${width - margin.left}`])
             
             var xAxis = svgChart.append("g")
                     .attr('id', id) /// je le donne un id pour séléctionner ce groupe lors de la transition
@@ -359,10 +365,14 @@
                     .attr("transform", `translate(${margin.left}, ${margin.top})`)
                     .call(yAxis)
             
+            if (id != "brush-chart") 
+            { 
+        
             svgChart.append("text")
                 .attr("transform", `translate(10,${height/2})rotate(-90)`)
                 .style("font-size", "12px")
                 .text("Temperature in °C");
+            }
 
             let lineGroup = svgChart.selectAll('g.lineGroup') 
                 .data(sumstat)
@@ -396,8 +406,8 @@
                     var tooltip = d3.select(".chart-tooltip")
                     
                     tooltip.style('display', 'block')  
-                    .style('left', d3.event.pageX + 10 + 'px')
-                    .style('top', d3.event.pageY + 10 + 'px')
+                            .style('left', d3.event.pageX + 10 + 'px')
+                            .style('top', d3.event.pageY + 10 + 'px')
                     
                     var xDate = scales[id].x.invert(mouse[0])
                     var yTemp = scales[id].y.invert(mouse[1]).toFixed(3)
