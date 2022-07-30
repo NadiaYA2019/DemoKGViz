@@ -207,9 +207,8 @@
             let lineGroup = svgChart
                             .select('g.lineGroup')
 
-            lineGroup.append("g")
-                .attr("class", "brush")
-                .call(brush)
+            lineGroup.attr("class", "brush")
+                        .call(brush)
                 //.call(brush.move, defaultSelection);
             
             var clipPath = d3.select(`svg#line-chart-hour1`)
@@ -232,15 +231,23 @@
             */
              // A function that update the chart for given boundaries
             function updateChart() {
+                
+                const sel = d3.brushSelection(this);
+                console.log("selection", sel);
+               // k = brush.extent();
+               // console.log ("brush extenion")
+                //extent = d3.event.selection
 
-                extent = d3.event.selection
                 // If no selection, back to initial coordinate. Otherwise, update X axis domain
-                if(!extent){
+                if(!sel){
                     if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
                 }
                 else
                 {
-                    scales["line-chart-hour1"].x.domain([scales["brush-chart"].x.invert(extent[0]), scales["brush-chart"].x.invert(extent[1])])
+                    //scales["line-chart-hour1"].x.domain([scales["brush-chart"].x.invert(sel[0]), scales["brush-chart"].x.invert(sel[1])])
+                    const [x0, x1] = sel.map(scales["brush-chart"].x.invert);
+                    scales["line-chart-hour1"].x.domain([x0, x1])
+                    console.log("selection", x0);
                     // console.log("x.invert(extent[0]", x.invert(extent[0]))
                     // console.log("x.invert(extent[1]", x.invert(extent[1]))
                    // lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
@@ -248,7 +255,9 @@
                 
                 // Update axis and circle position
                 d3.select('g#line-chart-hour1').transition().duration(2000).call(d3.axisBottom(scales["line-chart-hour1"].x))
-               
+                
+
+
                 d3.select('svg#line-chart-hour1')
                     .selectAll('g.lineGroup')
                     .selectAll("path")
@@ -300,7 +309,7 @@
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
-                .style("font-size", "12px")
+                .style("font-size", "11px")
                 .text("Air Temperature Per Station (Region: " + region + ")" ); 
             }
             else
@@ -309,9 +318,10 @@
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
-                .style("font-size", "12px")
+                .style("font-size", "13px")
                 .text("Daily Average Air Temperature Per Station (Region: " + region + ")" ); }
-        }
+            
+            }
 
         function drawLineChart(newdata, id, insee) {
             let margin = {left: 40, right: 20, bottom: 20, top: 0}
@@ -455,6 +465,9 @@
                     })
 
                 }) 
+               
+
+
         }
         
    
@@ -465,6 +478,7 @@
         {
             
             //console.log("3Hourly Temperature", json)
+            d3.select("svg#line-chart-hour2").selectAll('text').remove()
             
             let margin = {left: 70, right: 20, bottom: 20, top: 80}
             let width = 600, height = 300
@@ -530,8 +544,9 @@
                 .call(yAxis)
                 
             svgChart.append("text")
-                .attr("transform", "translate(30,200)rotate(-90)")
-                .text("Temperature");
+                .attr("transform", `translate(10,${height/2})rotate(-90)`)
+                .style("font-size", "12px")
+                .text("Temperature in °C");
 
             var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6])
 

@@ -139,9 +139,10 @@ function buildQuery_slices1(insee) {
     SELECT distinct ?date ?Nstation ?temp_avg ?label ?insee WHERE
     {
         VALUES ?insee  {'`+ insee +`' } 
+        VALUES ?year  {"2021"^^xsd:gYear "2020"^^xsd:gYear "2019"^^xsd:gYear }
         ?s  a qb:Slice ;
         wes-dimension:station ?station ;
-        wes-dimension:year "2021"^^xsd:gYear ;
+        wes-dimension:year ?year ;
         qb:observation [
         a qb:Observation ;
         wes-attribute:observationDate ?date ;
