@@ -161,10 +161,11 @@
             color.domain(stationnames).range(colorbrewer.Set2[6]) 
 
             drawLineChart(chartdata, "brush-chart", region)
-            drawBrush("brush-chart")
 
             drawLineChart(chartdata, "line-chart-hour1", region)
             drawLegend(stationnames, chartdata[0].region, "chart-legend-hour1")
+
+            drawBrush("brush-chart")
 
             d3.select('svg#line-chart-hour2').selectAll('g').remove()
             d3.select('svg#chart-legend-hour2').selectAll('g').remove()
@@ -211,13 +212,15 @@
                         .call(brush)
                 //.call(brush.move, defaultSelection);
             
-            var clipPath = d3.select(`svg#line-chart-hour1`)
-                .selectAll('g.lineGroup').append("defs")
+            let targetChartSVG = d3.select(`svg#line-chart-hour1`)
+            var clipPath = targetChartSVG
+                .selectAll('g.lineGroup')
+                .append("defs")
                 .append("clipPath")
                 .attr("id", "clip")
                 .append("rect")
-                .attr("width", width )
-                .attr("height", height );
+                .attr("width", targetChartSVG.node().clientWidth )
+                .attr("height", targetChartSVG.node().clientHeight);
    
             var idleTimeout
             function idled() { idleTimeout = null; }
@@ -231,23 +234,15 @@
             */
              // A function that update the chart for given boundaries
             function updateChart() {
-                
-                const sel = d3.brushSelection(this);
-                console.log("selection", sel);
-               // k = brush.extent();
-               // console.log ("brush extenion")
-                //extent = d3.event.selection
 
+                extent = d3.event.selection
                 // If no selection, back to initial coordinate. Otherwise, update X axis domain
-                if(!sel){
+                if(!extent){
                     if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
                 }
                 else
                 {
-                    //scales["line-chart-hour1"].x.domain([scales["brush-chart"].x.invert(sel[0]), scales["brush-chart"].x.invert(sel[1])])
-                    const [x0, x1] = sel.map(scales["brush-chart"].x.invert);
-                    scales["line-chart-hour1"].x.domain([x0, x1])
-                    console.log("selection", x0);
+                    scales["line-chart-hour1"].x.domain([scales["brush-chart"].x.invert(extent[0]), scales["brush-chart"].x.invert(extent[1])])
                     // console.log("x.invert(extent[0]", x.invert(extent[0]))
                     // console.log("x.invert(extent[1]", x.invert(extent[1]))
                    // lineGroup.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
@@ -309,7 +304,7 @@
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
-                .style("font-size", "11px")
+                .style("font-size", "12px")
                 .text("Air Temperature Per Station (Region: " + region + ")" ); 
             }
             else
@@ -318,10 +313,9 @@
                 .attr("x", 350)             
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
-                .style("font-size", "13px")
+                .style("font-size", "12px")
                 .text("Daily Average Air Temperature Per Station (Region: " + region + ")" ); }
-            
-            }
+        }
 
         function drawLineChart(newdata, id, insee) {
             let margin = {left: 40, right: 20, bottom: 20, top: 0}
@@ -465,9 +459,6 @@
                     })
 
                 }) 
-               
-
-
         }
         
    
@@ -478,7 +469,6 @@
         {
             
             //console.log("3Hourly Temperature", json)
-            d3.select("svg#line-chart-hour2").selectAll('text').remove()
             
             let margin = {left: 70, right: 20, bottom: 20, top: 80}
             let width = 600, height = 300
@@ -544,9 +534,8 @@
                 .call(yAxis)
                 
             svgChart.append("text")
-                .attr("transform", `translate(10,${height/2})rotate(-90)`)
-                .style("font-size", "12px")
-                .text("Temperature in °C");
+                .attr("transform", "translate(30,200)rotate(-90)")
+                .text("Temperature");
 
             var color = d3.scaleOrdinal().domain(StationName).range(colorbrewer.Set2[6])
 
