@@ -2,43 +2,260 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Leaflet and D3 Map</title>
+    <title>WeKG-MF Visualisations</title>
     <meta charset="utf-8" />
     <!-- CSS only -->
     <link rel="stylesheet" href="./css/leaflet.css" />
     <link href="./css/bootstrap.min.css" rel="stylesheet"/>
     <link rel="stylesheet" href="./css/style.css" />
+
+<style>
+	body {
+	    margin: 20px 50px;
+	}
+
+	p {
+	    margin: 20px 20px;
+	    text-align: justify;
+	    text-justify: inter-word;
+	}
+
+	code {
+	    background: #F1F1F1;
+	}
+
+	a:link,
+	a:visited {
+	    color: blue;
+	    background-color: transparent;
+	    text-decoration: none;
+	}
+
+	a:hover {
+	    color: red;
+	    background-color: transparent;
+	    text-decoration: underline;
+	}
+
+	.header {
+	    border-radius: 15px;
+	    padding: 20px;
+	    text-align: center;
+	    background-color: rgb(75, 125, 190);
+	    /* color: blueviolet; */
+	    color: white;
+	}
+
+	.column {
+	    float: left;
+	}
+
+	/* Middle column */
+	.column.middle {
+	    width: 25%;
+	}
+
+	/* Left column */
+	.column.left {
+	    width: 30%;
+	}
+
+	/* Right column */
+	.column.right {
+	    width: 45%;
+	}
+
+	/* Responsive layout - makes the three columns stack on top of each other instead of next to each other */
+	@media screen and (max-width: 600px) {
+	    .column.left,
+	    .column.middle,
+	    .column.right {
+		width: 100%;
+	    }
+	}
+
+	.row:after {
+	    content: "";
+	    display: table;
+	    clear: both;
+	}
+
+	.page-header {
+	    border-radius: 6px;
+	    padding: 5px 15px;
+	    margin-top: 10px;
+	    margin-bottom: 10px;
+	    margin-right: 10px;
+	}
+
+	h1.page-header {
+	    background-color: rgb(75, 125, 190);
+	    color: white;
+	}
+
+	h2.page-header {
+	    background-color: rgb(218, 229, 241);
+	}
+
+	button.page-header {
+	    background-color: rgb(75, 125, 190);
+	    color: white;
+	}
+
+	h3.page-header {
+	    background-color: rgb(238, 238, 238);
+	}
+
+	.footer {
+	    background-color: #F1F1F1;
+	    text-align: center;
+	    padding: 10px;
+	}
+
+	table {
+	    width: 98%;
+	    margin-left: auto;
+	    margin-right: auto;
+	}
+
+	table,
+	th,
+	td {
+	    border: 1px solid black;
+	    border-collapse: collapse;
+	}
+
+	th,
+	td {
+	    padding: 5px;
+	    text-align: left;
+	}
+
+	table#t01 tr:nth-child(even) {
+	    background-color: rgb(238, 238, 238);
+	}
+
+	table#t01 tr:nth-child(odd) {
+	    background-color: transparent;
+	}
+
+	table#t01 th {
+	    background-color: rgb(218, 229, 241);
+	    color: black;
+	}
+    </style>
+
+<style> /* For the collapsible sections. */
+.collapsible {
+  background-color: #777;
+  color: white;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+}
+
+.active, .collapsible:hover {
+  background-color: #555;
+}
+
+.collapsible:after {
+  content: '\002B';
+  color: white;
+  font-weight: bold;
+  float: right;
+  margin-left: 5px;
+}
+
+.active:after {
+    content: "\2212";
+}
+
+.content {
+  padding: 0 18px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  background-color: #f1f1f1;
+}
+</style>
+    
 </head>
 <body>
    
     <div class="header">
         <h1>WeKG-MF Knowledge Graph Exploration and Navigation</h1>
     </div>
-    
-    <div class="dataviz">
-        <div class="dataviz-1">
-            <div id="map" ></div>
-        </div>
 
-        <div class="dataviz-2">
-            <div class="line-chart-div" style="width:600px; height:100px; ">
-                <svg id="brush-chart"></svg>
-            </div>
+    <br/>
     
-            <div class="line-chart-div1" style="width:600px; height:400px; ">
-                <svg id="chart-legend-hour1" width="600" height="80"></svg>
-                <svg id="line-chart-hour1" ></svg>
-            </div>
-            
-            <div class="line-chart-div2" style="width:600px; height:200px; ">
-                <svg id="chart-legend-hour2" width="600" height="80"></svg>
-                <svg id="line-chart-hour2" ></svg>
-            </div>
-        </div>
+    <button type="button" class="collapsible">~~Description~~</button>
+    <div class="content" style="height:30%;overflow:auto">
+      <p>
+	The recent trend of adopting linked-data principles to
+	integrate and publish semantically described open data using
+	W3C standards has led to a large amount of available
+	resources. In particular, meteorological sensor data have been
+	uplifted into public weather-focused RDF graphs, such as
+	WeKG-MF which offers access to a large set of meteorological
+	variables described through spatial and temporal
+	dimensions. Nevertheless, these resources include huge numbers
+	of raw observations that are tedious to explore by lay
+	users. In this article, we aim at providing them with visual
+	exploratory "tours", benefiting from RDF data cubes to present
+	high-level aggregated views together with on-demand
+	fine-grained details through a unified Web interface.
+      </p>
     </div>
     
-    <div class="chart-tooltip"> </div>
+    <!-- Beginning of the Demonstrator Collapsible-->
+    <button type="button" class="page-header collapsible">~~Explore WeKG-MF~~</button>
+    <div class="content" style="height:80%;overflow:auto">
 
+
+      
+      <div class="dataviz">
+        <div class="dataviz-1">
+      <p>
+	The following map allows to visualise the information
+	available in the WeKG-MF RDF dataset.  By Clicking a region,
+	one can have access to the weather stations and some climatic
+	records.
+      </p>
+          <div id="map" ></div>
+        </div>
+	
+        <div class="dataviz-2">
+          <div class="line-chart-div" style="width:600px; height:100px; ">
+            <svg id="brush-chart"></svg>
+          </div>
+	  
+          <div class="line-chart-div1" style="width:600px; height:400px; ">
+            <svg id="chart-legend-hour1" width="600" height="80"></svg>
+            <svg id="line-chart-hour1" ></svg>
+          </div>
+          
+          <div class="line-chart-div2" style="width:600px; height:200px; ">
+            <svg id="chart-legend-hour2" width="600" height="80"></svg>
+            <svg id="line-chart-hour2" ></svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="chart-tooltip"> </div>
+    </div>
+    <!-- End of the Demonstrator Collapsible-->
+    
+    <footer>
+      <hr/>
+      <div class="footer">
+	Last update: August 2022
+      </div>
+    </footer>
+    
     <!-- Adding necessary libraries -->
     <script src="./js/d3.v5.min.js"></script>
     <script src="./js/jquery-1.9.1.js"></script>
@@ -51,6 +268,27 @@
     <script type="text/javascript" src="./js/regions.js"></script>
     <script type="text/javascript" src="./js/queries.js"></script>
     
+
+    
+<!-- Block related to the collapsible sections -->
+<script>
+var coll = document.getElementsByClassName("collapsible");
+var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.maxHeight){
+      content.style.maxHeight = null;
+    } else {
+      content.style.maxHeight = content.scrollHeight + "px";
+    } 
+  });
+}
+
+document.querySelector('.collapsible').click();
+</script>
     
     <script type="text/javascript">
         SPARQL =  function(o) {
