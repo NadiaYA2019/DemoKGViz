@@ -31,7 +31,6 @@ function QueryObservationsByStation_Date(station, date) {
         sosa:resultTime ?t . 
         ?s rdfs:label ?station .
         
-        #FILTER(xsd:date(?t) <= xsd:date(?date))
         FILTER(xsd:date(?t) >= xsd:date(?jourPrecedent))
         BIND ( bif:dateadd('day', -1, xsd:date(?date)) as ?jourPrecedent)
         BIND ( bif:dateadd('day', 1, xsd:date(?date)) as ?jourSuivant)
