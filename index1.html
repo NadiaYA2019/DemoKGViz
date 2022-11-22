@@ -214,18 +214,18 @@
     <!-- Beginning of the Demonstrator Collapsible-->
     <button type="button" class="page-header collapsible">~~Explore WeKG-MF~~</button>
     <div class="content" style="height:80%;overflow:auto">
-        <p> 
-            The following map allows to visualise some of the information available in or computed from the WeKG-MF RDF dataset. <b>By Clicking a French region</b>, one can access weather stations and some of their climatic records. On the right side, the top chart offers a brush feature to zoom on a specific time span on the second chart. By hovering the latter, one can see unaggregated details in a third chart down below.
-         </p>
+
+
+      
       <div class="dataviz">
-       
         <div class="dataviz-1">
-    
+     <p> 
+        The following map allows to visualise some of the information available in or computed from the WeKG-MF RDF dataset. By Clicking a French region, one can access weather stations and some of their climatic records. On the right side, the top chart offers a brush feature to zoom on a specific time span on the second chart. By hovering the latter, one can see unaggregated details in a third chart down below.
+     </p>
           <div id="map" ></div>
         </div>
 	
         <div class="dataviz-2">
-	  <p></p><br/>
           <div class="line-chart-div" style="width:600px; height:100px; ">
             <svg id="brush-chart"></svg>
           </div>
@@ -235,7 +235,7 @@
             <svg id="line-chart-hour1" ></svg>
           </div>
           
-          <div class="line-chart-div2" style="width:600px; height:400px; ">
+          <div class="line-chart-div2" style="width:600px; height:200px; ">
             <svg id="chart-legend-hour2" width="600" height="80"></svg>
             <svg id="line-chart-hour2" ></svg>
           </div>
@@ -304,7 +304,7 @@ document.querySelector('.collapsible').click();
 
         var endpoint = new SPARQL({ 
             apikey: "YOUR-API-KEY-HERE", 
-            endpoint: "https://weakg.i3s.unice.fr/sparql"
+            endpoint: "http://weakg.i3s.unice.fr/sparql"
             //endpoint: "http://localhost:8890/sparql"
         });
 
