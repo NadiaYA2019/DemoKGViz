@@ -108,7 +108,8 @@ function buildQuery_slices(insee) {
         wes-attribute:observationDate ?date ;
         wes-measure:avgDailyTemperature ?temp_avg; 
         wes-measure:minDailyTemperature ?temp_min; 
-        wes-measure:maxDailyTemperature ?temp_max] .
+        wes-measure:maxDailyTemperature ?temp_max
+        wes-measure:rainfall24h ?rainfall24h] .
         
         ?station a weo:WeatherStation ; dct:spatial ?e.                                
         ?e wdt:P131 ?item .
@@ -124,16 +125,16 @@ function buildQuery_slices(insee) {
 
 function buildQuery_slices1(insee) {
     console.log('code = ', insee)
-    var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
-    PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
-    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-    PREFIX qb:  <http://purl.org/linked-data/cube#>
-    PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
-    PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
-    PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    PREFIX dct: <http://purl.org/dc/terms/>
-    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+            var query = `PREFIX wes: <http://ns.inria.fr/meteo/observationslice/>
+            PREFIX weo: <http://ns.inria.fr/meteo/ontology/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            PREFIX qb:  <http://purl.org/linked-data/cube#>
+            PREFIX wes-dimension: <http://ns.inria.fr/meteo/observationslice/dimension#>
+            PREFIX wes-measure: <http://ns.inria.fr/meteo/observationslice/measure#>
+            PREFIX wes-attribute: <http://ns.inria.fr/meteo/observationslice/attribute#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX dct: <http://purl.org/dc/terms/>
+            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
     
     SELECT distinct ?date ?Nstation ?temp_avg ?label ?insee WHERE
     {
@@ -145,7 +146,7 @@ function buildQuery_slices1(insee) {
         qb:observation [
         a qb:Observation ;
         wes-attribute:observationDate ?date ;
-        wes-measure:avgDailyTemperature ?temp_avg] .
+        wes-measure:avgDailyTemperature ?temp_avg; wes-measure:rainfall24h ?rainfall24h] .
         
         ?station a weo:WeatherStation ; dct:spatial ?e; rdfs:label ?Nstation.                            
         ?e wdt:P131 ?item .
@@ -207,7 +208,8 @@ function Query_slices_byStation(uri_station) {
         wes-attribute:observationDate ?date ;
         wes-measure:avgDailyTemperature ?temp_avg; 
         wes-measure:minDailyTemperature ?temp_min; 
-        wes-measure:maxDailyTemperature ?temp_max] .
+        wes-measure:maxDailyTemperature ?temp_max;
+        wes-measure:rainfall24h ?rainfall24h] .
         ?station a weo:WeatherStation ; rdfs:label ?Nstation .
         #BIND(month(?date) as ?month)
     }
