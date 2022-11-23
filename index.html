@@ -14,6 +14,9 @@
 	    margin: 20px 50px;
 	}
 
+    .dataviz {
+        width: 100%;
+    }
 	p {
 	    margin: 20px 20px;
 	    text-align: justify;
@@ -86,6 +89,7 @@
 	    margin-top: 10px;
 	    margin-bottom: 10px;
 	    margin-right: 10px;
+        font-size: 20px;
 	}
 
 	h1.page-header {
@@ -181,18 +185,30 @@
   transition: max-height 0.3s ease-out;
   background-color: #ffffff;
 }
+
+.chart{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+}
+
+.legend{
+    position: relative;
+    z-index: 2;
+}
 </style>
     
 </head>
 <body>
    
-    <div class="header">
-        <h1>WeKG-MF Knowledge Graph Exploration and Navigation</h1>
+    <div class="header" style="font-size: 22px; font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif">
+        <h1><b> WeKG-MF Knowledge Graph Exploration and Navigation </b></h1>
     </div>
 
     <br/>
     
-    <button type="button" class="collapsible">~~Description~~</button>
+    <button type="button" class="page-header collapsible" style="font-size: 22px; font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif"><b>~~Description~~</b></button>
     <div class="content" style="height:30%;overflow:auto">
       <p>
 	The recent trend of adopting linked-data principles to
@@ -212,12 +228,12 @@
     </div>
     
     <!-- Beginning of the Demonstrator Collapsible-->
-    <button type="button" class="page-header collapsible">~~Explore WeKG-MF~~</button>
+    <button type="button" class="page-header collapsible" style="font-size: 22px; font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif"><b>~~Explore WeKG-MF~~</b></button>
     <div class="content" style="height:80%;overflow:auto">
         <p> 
             The following map allows to visualise some of the information available in or computed from the WeKG-MF RDF dataset. <b>By Clicking a French region</b>, one can access weather stations and some of their climatic records. On the right side, the top chart offers a brush feature to zoom on a specific time span on the second chart. By hovering the latter, one can see unaggregated details in a third chart down below.
          </p>
-      <div class="dataviz">
+      <div class="dataviz" >
        
         <div class="dataviz-1">
     
@@ -225,19 +241,20 @@
         </div>
 	
         <div class="dataviz-2">
-	  <p></p><br/>
-          <div class="line-chart-div" style="width:600px; height:100px; ">
+	  
+          <div class="line-chart-div" style="width:100%; height:100px; ">
             <svg id="brush-chart"></svg>
           </div>
-	  
-          <div class="line-chart-div1" style="width:600px; height:400px; ">
-            <svg id="chart-legend-hour1" width="600" height="80"></svg>
+          <div class="line-chart-div1" style="width:100%; height:480px; ">
+            <svg id="chart-title-hour1" width="100%" height="40"></svg>
+            <svg id="chart-legend-hour1" height="40"></svg>
             <svg id="line-chart-hour1" ></svg>
           </div>
           
-          <div class="line-chart-div2" style="width:600px; height:400px; ">
-            <svg id="chart-legend-hour2" width="600" height="80"></svg>
-            <svg id="line-chart-hour2" ></svg>
+          <div class="line-chart-div2" style="width:100%; height:480px; ">
+            <svg id="chart-title-hour2" width="100%" height="40"></svg>
+            <svg id="chart-legend-hour2" height="40" ></svg>
+            <svg id="line-chart-hour2"></svg>
           </div>
         </div>
       </div>
@@ -249,7 +266,7 @@
     <footer>
       <hr/>
       <div class="footer">
-	Last update: August 2022
+	Last update: November 2022
       </div>
     </footer>
     
@@ -284,7 +301,7 @@ for (i = 0; i < coll.length; i++) {
   });
 }
 
-document.querySelector('.collapsible').click();
+document.querySelector('.collapsible');
 </script>
     
     <script type="text/javascript">
@@ -332,7 +349,7 @@ document.querySelector('.collapsible').click();
             .append("path")
             .attr("d", path)
             .classed('map-border', true)
-            .style("fill-opacity", 0.2)
+            .style("fill-opacity", 0.3)
             .on("click", function(event, d) {
                 //console.log('clicked!')
                 
@@ -388,6 +405,7 @@ document.querySelector('.collapsible').click();
         function drawCharts(json, region) {
             // drawBrush()
             // onSuccessMember4(json, region)
+            console.log(json)
             let chartdata = getData(json) // compute data for charts
 
             let stationnames = chartdata.map(d => d.station) // ancien newdata
@@ -400,6 +418,7 @@ document.querySelector('.collapsible').click();
 
             drawLineChart(chartdata, "line-chart-hour1", region)
             drawLegend(stationnames, chartdata[0].region, "chart-legend-hour1")
+            drawTitle(stationnames, chartdata[0].region, "chart-title-hour1")
 
             drawBrush("brush-chart")
 
@@ -432,7 +451,7 @@ document.querySelector('.collapsible').click();
             let width = svgChart.node().parentNode.clientWidth,
                 height = svgChart.node().parentNode.clientHeight;
 
-            console.log(width, height)
+            // console.log(width, height)
 
             var brush = d3.brushX()                 // Add th e brush feature using the d3.brush function
                         .extent([[0,0], [width - margin.left , height - margin.bottom] ] ) // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
@@ -445,7 +464,7 @@ document.querySelector('.collapsible').click();
             firstDate.setMonth(firstDate.getMonth() - 6); // subtract 3 months from the last date of the axis
 
             const defaultSelection = [scales["brush-chart"].x(firstDate),  scales["brush-chart"].x.range()[1]]; // give the positions of the first and last date which you want to include in the brush
-            console.log ("defaultSelection:", defaultSelection)
+            // console.log ("defaultSelection:", defaultSelection)
             let lineGroup = svgChart
                             .select('g.lineGroup')
 
@@ -501,51 +520,71 @@ document.querySelector('.collapsible').click();
 
         }
 
+        function drawTitle(StationName, region, id, date) {
+
+            // add SVG title             
+            var svgTitle = d3.select("svg#" + id);
+            svgTitle.selectAll('text').remove()
+            
+            if (id === "chart-title-hour2") 
+            {
+                if (svgTitle.text != "")
+                svgTitle.append("text")
+                    .attr("x", 350)             
+                    .attr("y", 20)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .html("Air Temperatures Per Station (Region: " + region + ")" + "  " + date + "(J-1, J+1)"); 
+            }
+            else  if (svgTitle.text != "")
+            {
+                svgTitle.append("text")
+                    .attr("x", 360)             
+                    .attr("y", 20)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .text("Daily Average Air Temperatures Per Station (Region: " + region + ")" ); 
+            }
+
+        }
+
         function drawLegend(StationName, region, id, date) {
             
             d3.select("svg#" + id).selectAll('text').remove()
-
+            
             // add SVG legend             
             var svglegend = d3.select("svg#" + id);
-            
+            let width = svglegend.node().parentNode.clientWidth;
             svglegend.selectAll('g').remove()
-                                    
+            svglegend.attr('width', width)             
             let legendGroup = svglegend.selectAll('g')
                                     .data(StationName)
                                     .enter()
                                     .append('g')
             
-            legendGroup.append('line')
-                        .style("stroke", d => color(d))
-                        .style("stroke-width", 3)
-                        .attr("x1", 0)
-                        .attr("y1", (d,i) => 10 + i * 15)
-                        .attr("x2", 30)
-                        .attr("y2", (d,i) => 10 + i * 15);
-            
+            lengthMax = Math.max.apply(Math, $.map(StationName, function (el) { return el.length }));
+            lengthMin = Math.min.apply(Math, $.map(StationName, function (el) { return el.length }));
+            console.log("Stations Name length max",lengthMax)
+            console.log("Stations Name length min",lengthMin)
+            lengthAvg = (lengthMax + lengthMin) /2 
+            console.log(svglegend.width
+            )
+            legendGroup.append("circle")
+                        .style("fill", d => color(d))
+                        .attr("r",6)
+                        .attr("cx", (d,i) => 10 + i * lengthAvg * 11)
+                        .attr("cy", 6)
+                        //.attr("cx2", (d,i) => 10  + 50 + i * lengthAvg * 11)
+                        //.attr("cy2", 0);
+            //.style("stroke-width", 3)
+            //legendGroup.append("circle").attr("cx",300).attr("cy",20).attr("r", 6).style("fill", "#69b3a2")
             legendGroup.append('text')
-                        .attr('x', 40)
-                        .attr('y', (d,i) => 10 + i * 17)
+                        .attr('x', (d,i) =>  10 + i * lengthAvg * 11)
+                        .attr('y', 23)
                         .style('font-size', '11px')
                         .text(d => d)
                 
-            if (id === "chart-legend-hour2") 
-            {
-                legendGroup.append("text")
-                .attr("x", 350)             
-                .attr("y", 20)
-                .attr("text-anchor", "middle")
-                .style("font-size", "12px")
-                .html("Air Temperatures Per Station (Region: " + region + ")" + "  " + date + "(J-1, J+1)"); 
-            }
-            else
-            {
-            legendGroup.append("text")
-                .attr("x", 350)             
-                .attr("y", 20)
-                .attr("text-anchor", "middle")
-                .style("font-size", "12px")
-                .text("Daily Average Air Temperatures Per Station (Region: " + region + ")" ); }
+            
         }
 
         function drawLineChart(newdata, id, insee) {
@@ -555,9 +594,12 @@ document.querySelector('.collapsible').click();
             let width = svgChart.node().parentNode.clientWidth,
                 height = svgChart.node().parentNode.clientHeight;
 
-            if (id != "brush-chart") height -= 80;
+            if (id != "brush-chart"){
+                height -= 80;
+               
+            } 
 
-            console.log(width, height)
+            // console.log(width, height)
             
             svgChart.selectAll('g').remove()
             svgChart.selectAll("text").remove()
@@ -567,13 +609,14 @@ document.querySelector('.collapsible').click();
                 .append("g")
                 .attr("transform", "translate("+ margin.left + "," + margin.top + ")" )
             
-            console.log("Region", newdata[0].region)
+            // console.log("Region", newdata[0].region)
             var region = newdata[0].region
 
             var sumstat = d3.nest()
-                .key(d => d.station)
-                .entries(newdata);
+                            .key(d => d.station)
+                            .entries(newdata);
             
+            console.log("sumstat", sumstat)
             scales[id].x.domain(d3.extent(newdata, d => new Date(d.date))).range([0, `${width - margin.left}`])
             
             var xAxis = svgChart.append("g")
@@ -615,9 +658,9 @@ document.querySelector('.collapsible').click();
             
             lineGroup.append("path")
                 .attr("fill", "none") //.attr("fill", d => color(d.key))
-                .style('fill-opacity', 0.1)
+                .style('fill-opacity', 0.3)
                 .attr("stroke", d=> color(d.key))
-                .attr("stroke-width", 1.5)
+                .attr("stroke-width", 2)
                 .attr("d", function(d){
                     return d3.line()
                     .curve(d3.curveCardinal)
@@ -625,8 +668,18 @@ document.querySelector('.collapsible').click();
                         .y(function(d) { return scales[id].y(parseFloat(d.temp_avg)); })
                         (d.values)
                 })
+                .on("mouseover", function(event){
+                        if (this.parentNode.parentNode.id == 'brush-chart') return;
+                        var tooltip = d3.select(".chart-tooltip");
+                        var mouse = d3.mouse(this); 
+                        var xDate = scales[id].x.invert(mouse[0])
+                        tooltip.style('display', 'block')  
+                                .style('left', d3.event.pageX + 10+ 'px')
+                                .style('top', d3.event.pageY + 10 + 'px') 
+                                .html("Click to visualize air temperatures measured each 3 hours on " + xDate.toISOString().split('T')[0])
+                })
                 .on("mouseout", () => d3.select(".chart-tooltip").style("display", "none"))
-                .on('mouseover', function(d) {
+                .on('click', function(event, d) {
                     if (this.parentNode.parentNode.id == 'brush-chart') return;
 
                     // console.log("data----here", d.key);
@@ -638,14 +691,14 @@ document.querySelector('.collapsible').click();
                     var tooltip = d3.select(".chart-tooltip")
                     
                     tooltip.style('display', 'block')  
-                            .style('left', d3.event.pageX + 10 + 'px')
+                            .style('left', d3.event.pageX + 10+ 'px')
                             .style('top', d3.event.pageY + 10 + 'px')
                     
                     var xDate = scales[id].x.invert(mouse[0])
                     var yTemp = scales[id].y.invert(mouse[1]).toFixed(3)
                     // console.log("Temp----here", yTemp);
                     // console.log("Date----here", xDate);
-                    tooltip.html("<b> Station: </b>"+ station + "</br>" + "<b>  Date:</b> " + xDate.toISOString().split('T')[0] +  "</br>" + "<b> Daily Avg. Temp.:</b> " + yTemp);
+                    tooltip.html("<b>  Date:</b> " + xDate.toISOString().split('T')[0]);
                     
                 
                     function doesChartExist() {
@@ -679,12 +732,14 @@ document.querySelector('.collapsible').click();
                                 if (d3.select('svg#chart-legend-hour2').selectAll('g').empty()) {
                                     stationnames = json.results.bindings.map(d => d.station.value)
                                     drawLegend(stationnames, region, "chart-legend-hour2", date)
+                                    drawTitle(stationnames, region, "chart-title-hour2", date)
                                 } else {
                                     // change title
                                 }
                                 stationnames = json.results.bindings.map(d => d.station.value)
                                 stationnames = stationnames.filter( (d,i) => stationnames.indexOf(d) === i)
                                 drawLegend(stationnames, region, "chart-legend-hour2", date)
+                                drawTitle(stationnames, region, "chart-title-hour2", date)
                                 onSuccessMember3HourlyTemp(json)
 
                             } );
@@ -702,18 +757,21 @@ document.querySelector('.collapsible').click();
             
             //console.log("3Hourly Temperature", json)
             
-            let margin = {left: 70, right: 20, bottom: 20, top: 80}
-            let width = 600, height = 300
+            let margin = {left: 40, right: 20, bottom: 20, top: 0}
             
             var svgChart = d3.select("svg#line-chart-hour2")
             // console.log(svgChart)
+
+            let width = svgChart.node().parentNode.clientWidth,
+                height = svgChart.node().parentNode.clientHeight;
             
             svgChart.selectAll('g').remove()
             svgChart.select("text").remove()
             
-            svgChart.attr('width', width + margin.left + margin.right)
-                    .attr('height', height + margin.bottom + margin.top)
+            svgChart.attr('width', width)
+                    .attr('height', height)
                     .append("g")
+                    .attr("transform", "translate("+ margin.left + "," + margin.top + ")" )
             
             let newdata = []
             let data = json.results.bindings
@@ -734,7 +792,7 @@ document.querySelector('.collapsible').click();
 
             // add a day
             date.setDate(datej1.getDate() - 1);
-            console.log("dataj", date.toISOString())
+            // console.log("dataj", date.toISOString())
             date =  date.toISOString().split('T')[0]
             var sumstat = d3.nest()
                             .key(d => d.station)
@@ -743,7 +801,7 @@ document.querySelector('.collapsible').click();
             var StationName = sumstat.map(function(d) {return d.key}) 
             //console.log(StationName)
 
-            console.log("new--- 3Hours", sumstat)
+            // console.log("new--- 3Hours", sumstat)
             
             var parseTime = d3.timeParse("%Y-%m-%dT%H:%M:%S");
 
@@ -757,7 +815,7 @@ document.querySelector('.collapsible').click();
                         .scale(x)
             
             svgChart.append("g")
-                .attr("transform", `translate(${margin.left}, ${height})`)
+                .attr("transform", `translate(${margin.left}, ${height - margin.bottom})`)
                 .call(xAxis);
             
 
@@ -766,13 +824,13 @@ document.querySelector('.collapsible').click();
             
             var y = d3.scaleLinear()
                 .domain(d3.extent(newdata, function(d) { return parseFloat(d.temp) }))
-                .range([height,0 ]);
+                .range([height - margin.bottom,0 ]);
             
             yAxis = d3.axisLeft()
                     .scale(y)
             
             svgChart.append("g")
-                .attr("transform", `translate(${margin.left}, 0)`)
+                .attr("transform", `translate(${margin.left}, ${margin.top})`)
                 .call(yAxis)
                 
             
@@ -800,7 +858,7 @@ document.querySelector('.collapsible').click();
                             .x(function(d) { return x(new Date (d.date)) ;})
                             .y(function(d) { return y(parseFloat(d.temp)); });
                            
-            console.log("valueline", valueline)
+            // console.log("valueline", valueline)
 
             lineGroup.append("path")
                     .attr("class", "chart-line")
@@ -864,24 +922,26 @@ document.querySelector('.collapsible').click();
                 .on('mousemove', function() { // mouse moving over canvas
                     var mouse = d3.mouse(this);
                     
+                    var xPos = mouse[0] + margin.left;
+
                     d3.select(".mouse-line")
                     .attr("d", function() {
-                        var d = "M" + mouse[0] + "," + height;
-                        d += " " + mouse[0] + "," + 0 ;
+                        var d = "M" + xPos + "," + height;
+                        d += " " + xPos + "," + 0 ;
                         return d;
                     });
 
 
-                    var xDate = x.invert(mouse[0] - margin.left);
+                    var xDate = x.invert(xPos - margin.left);
                     let roundedDate = roundMinutes(xDate)
 
-                    console.log('-----------------------------')
-                    console.log("selected date = ", roundedDate)
+                    // console.log('-----------------------------')
+                    // console.log("selected date = ", roundedDate)
                     
-                    console.log('ex = ', new Date(newdata[0].date))
+                    // console.log('ex = ', new Date(newdata[0].date))
 
                     let values = newdata.filter(e => new Date(e.date).getTime() === roundedDate.getTime())
-                    console.log(values)
+                    // console.log(values)
 
                     let circles = d3.selectAll(".mouse-per-line")
                     if (values.length) {
@@ -896,7 +956,7 @@ document.querySelector('.collapsible').click();
                                     .style('font-size', '11px')
                                     .text(v.temp);
 
-                                return `translate(${mouse[0]}, ${y(parseFloat(v.temp))})`
+                                return `translate(${xPos}, ${y(parseFloat(v.temp))})`
                             });
                     } else {
                         circles.transition().duration(500).attr('opacity', 0)
