@@ -1,7 +1,7 @@
 DemoKGViz
 =========
 
-> Providing visualisations on top of the WeKG-MF RDF dataset
+> Providing visualisations on top of the WeKG-MF RDF dataset, research work presented at VOILA'2022 workshop [PAPER](https://inria.hal.science/hal-03890035).
 
 
 Abstract
